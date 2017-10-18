@@ -11,7 +11,22 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  mqttsnxbee.searchGateway();
+  //mqttsnxbee.searchGateway();
+  mqttsnxbee.connect("Arduino1");
+  //mqttsnxbee.publish("su","Esto es una prueba");
+  //mqttsnxbee.subscribe("topicDeMierda");
+  //mqttsnxbee.subscribe("su");
+  //mqttsnxbee.subscribe(2500);
+  //mqttsnxbee.unsubscribe("topicDeMierda");
+  //mqttsnxbee.unsubscribe("su");
+  //mqttsnxbee.unsubscribe(2500);
 
+  //mqttsnxbee.disconnect();
+  //mqttsnxbee.disconnect(1205);
+
+  mqttsnxbee.pingReq();
+  
+  
   delay(5000);
+
 }
