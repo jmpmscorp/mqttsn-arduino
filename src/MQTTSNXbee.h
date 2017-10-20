@@ -26,14 +26,24 @@ class MQTTSNXbee : public MQTTSN{
         
         XBee xbee;
         XBeeAddress64 gatewayAddr;
-
         
-
-        uint8_t sendPacket(boolean broadcast, uint8_t length);
-
+        ZBTxRequest _tx;
+        XBeeResponse _response = XBeeResponse();
+        ZBTxStatusResponse _txStatus = ZBTxStatusResponse();
+        ZBRxResponse _rx = ZBRxResponse();
+        ModemStatusResponse _msr = ModemStatusResponse();
+        
         boolean publishCommon(const char * data, uint16_t frameLength);
         boolean subscribeCommon(uint16_t frameLength);
         boolean unsubscribeCommon(uint16_t frameLength);
+
+        uint8_t _sendPacket(uint8_t length, boolean broadcast = false);
+        uint8_t _sendBroadcastPacket(uint8_t length);
+        boolean  _waitResponsePacket(int timeout = 2000);
+        void _handleModemStatusResponse();
+        void _handleResponseError();
+
+        
 };
 
 #endif

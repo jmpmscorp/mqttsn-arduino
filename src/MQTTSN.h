@@ -54,6 +54,13 @@
 
 #define PROTOCOL_ID 0x01
 
+enum ReturnCode{
+    ACCEPTED,
+    CONGESTION,
+    INVALID_TOPIC_ID,
+    NOT_SUPPORTED
+};
+
 enum TopicIdType{
     NORMAL_TOPIC_ID,
     PREDEFINED_TOPIC_ID,
