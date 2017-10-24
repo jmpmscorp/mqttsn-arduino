@@ -3,38 +3,23 @@
 MQTTSNXbee::MQTTSNXbee(Stream & xbeeStream){
     this->xbee = XBee();
     this->xbee.setSerial(xbeeStream);
+    this->mqttsnParser = new MQTTSNParser();
 }
 
-boolean MQTTSNXbee::connect(const char * clientId){
-    uint8_t frameLength = this->buildConnectFrame(clientId);
-    uint8_t xbeeResponse = _sendPacket(frameLength);
 
-    if(!_waitResponsePacket()) return false;
-
-    uint8_t * mqttsnPacket = _rx.getData();
-
-    //Packet received should be: LENGTH(always 3) | CONNACK(0x05) | RETURN_CODE
-    if(mqttsnPacket[0] != 3) return false;
-
-    if(mqttsnPacket[1] != CONNACK) return false;
-
-    if(mqttsnPacket[2] != ACCEPTED) return false;
-
-    return true;
-}
 
 void MQTTSNXbee::disconnect(uint16_t duration){
-    uint8_t frameLength = this->buildDisconnectFrame(duration);
+    uint8_t frameLength = mqttsnParser->disconnectFrame(duration);
     uint8_t xbeeResponse = _sendPacket(true, frameLength);
 }
 
 boolean MQTTSNXbee::publish(const char * topic, const char * data){
-    uint8_t frameLength = this->buildPublishFrame(topic, data);
+    uint8_t frameLength = mqttsnParser->publishFrame(topic, data, nextMsgId);
     return publishCommon(data, frameLength);
 }
 
 boolean MQTTSNXbee::publish(uint16_t topic, const char * data){
-    uint8_t frameLength = buildPublishFrame(topic, data);
+    uint8_t frameLength = mqttsnParser->publishFrame(topic, data, nextMsgId);
 
     return publishCommon(data, frameLength);
 }
@@ -45,35 +30,14 @@ boolean MQTTSNXbee::publishCommon(const char * data, uint16_t frameLength){
     return true;
 }
 
-boolean MQTTSNXbee::searchGateway(){
-    uint8_t frameLength = this->buildSearchGWFrame();
-    uint8_t response = _sendBroadcastPacket(frameLength);
-
-    if(!_waitResponsePacket()) return false;
-
-    uint8_t * mqttsnPacket = _rx.getData();
-
-    //Packet should be Length | GWINFO (0x02) | gatewayId
-    uint8_t length = *mqttsnPacket++;
-    
-    if( *mqttsnPacket != GWINFO){
-        return false;
-    } else{
-        gatewayAddr = _rx.getRemoteAddress64();
-    }
-        
-       
-    return true;
-}
-
 boolean MQTTSNXbee::subscribe(const char * topic){
-    uint8_t frameLength = buildSubscribeOrUnsubscribeFrame(topic, true);
+    uint8_t frameLength = mqttsnParser->subscribeOrUnsubscribeFrame(topic, nextMsgId, true);
     return subscribeCommon(frameLength);
 }
 
 
 boolean MQTTSNXbee::subscribe(uint16_t topic){
-    uint8_t frameLength = buildSubscribeOrUnsubscribeFrame(topic, true);
+    uint8_t frameLength = mqttsnParser->subscribeOrUnsubscribeFrame(topic, nextMsgId, true);
     return subscribeCommon(frameLength);
 }
 
@@ -84,13 +48,13 @@ boolean MQTTSNXbee::subscribeCommon(uint16_t frameLength){
 }
 
 boolean MQTTSNXbee::unsubscribe(const char * topic){
-    uint8_t frameLength = buildSubscribeOrUnsubscribeFrame(topic, false);
+    uint8_t frameLength = mqttsnParser->subscribeOrUnsubscribeFrame(topic, nextMsgId, false);
 
     return unsubscribeCommon(frameLength);
 }
 
 boolean MQTTSNXbee::unsubscribe(uint16_t topic){
-    uint8_t frameLength = buildSubscribeOrUnsubscribeFrame(topic, false);
+    uint8_t frameLength = mqttsnParser->subscribeOrUnsubscribeFrame(topic, nextMsgId, false);
     
     return unsubscribeCommon(frameLength);
 }
@@ -101,8 +65,8 @@ boolean MQTTSNXbee::unsubscribeCommon(uint16_t frameLength){
     return true;
 }
 
-boolean MQTTSNXbee::pingReq(){
-    uint8_t frameLength = buildPingReqFrame();
+boolean MQTTSNXbee::pingReq(const char * clientId){
+    uint8_t frameLength = mqttsnParser->pingReqFrame(clientId);
     uint8_t response = _sendPacket(true, frameLength);
 
     return true;
@@ -111,9 +75,9 @@ boolean MQTTSNXbee::pingReq(){
 uint8_t MQTTSNXbee::_sendPacket(uint8_t length, boolean broadcast){
     
     if(broadcast)
-        _tx = ZBTxRequest(XBeeAddress64(0x00,BROADCAST_ADDRESS), buffer, length);
+        _tx = ZBTxRequest(XBeeAddress64(0x00,BROADCAST_ADDRESS), mqttsnParser->buffer, length);
     else
-        _tx = ZBTxRequest(gatewayAddr, buffer, length);
+        _tx = ZBTxRequest(gatewayAddr, mqttsnParser->buffer, length);
 
     xbee.send(_tx);
         
@@ -131,6 +95,10 @@ uint8_t MQTTSNXbee::_sendPacket(uint8_t length, boolean broadcast){
     } else{
         0xFE;
     }
+}
+
+void MQTTSNXbee::_saveGatewayAddress(){
+    gatewayAddr = _rx.getRemoteAddress64();
 }
 
 uint8_t MQTTSNXbee::_sendBroadcastPacket(uint8_t length){
@@ -157,6 +125,7 @@ boolean MQTTSNXbee::_waitResponsePacket(int timeout){
                         Serial.print('-');
                     }
                     Serial.println();
+                    responseBuffer = _rx.getData();
                     return true;
                 }
             } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE){

@@ -1,12 +1,15 @@
 #include "MQTTSNXbee.h"
 
-MQTTSNXbee mqttsnxbee(Serial1);
+#define xbeeSerial Serial1
+#define debugSerial Serial
+
+MQTTSNXbee mqttsnxbee(xbeeSerial);
 
 void setup() {
   // put your setup code here, to run once:
-  Serial1.begin(9600);
-  Serial.begin(19200);
-  mqttsnxbee.setDebugStream(Serial);
+  xbeeSerial.begin(9600);
+  debugSerial.begin(19200);
+  mqttsnxbee.setDebugStream(debugSerial);
 
   if(mqttsnxbee.searchGateway()){
     Serial.println("Search OK");
