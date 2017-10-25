@@ -15,6 +15,36 @@ boolean MQTTSNCommon::connect(const char * clientId, int keepAlive){
 
     if(msg->returnCode != ACCEPTED) return false;
 
+    nextMsgId = 1;
+
+    return true;
+}
+
+boolean MQTTSNCommon::publish(uint16_t topic, boolean predefined, const char * data, uint8_t qos){
+    uint8_t frameLength = mqttsnParser->publishFrame(topic, predefined, data, nextMsgId, qos);
+    return _publishCommon(frameLength);
+}
+
+/*boolean MQTTSNCommon::publish(const char * topic, const char * data){
+    uint8_t frameLength = mqttsnParser->publishFrame(topic, data, nextMsgId);
+    return _publishCommon(frameLength);
+}*/
+
+boolean MQTTSNCommon::_publishCommon(uint8_t frameLength){
+    uint8_t xbeeResponse = _sendPacket(frameLength);
+    
+    nextMsgId ++;
+
+    if(!_waitResponsePacket()) return false;
+
+    mqttsn_msg_puback * msg = (mqttsn_msg_puback *) responseBuffer;
+
+    if(msg->type != PUBACK) return false;
+
+    if(msg->returnCode != ACCEPTED) return false;
+    
+    if(mqttsnParser->_bswap(msg->messageId) != nextMsgId - 1) return false;
+
     return true;
 }
 

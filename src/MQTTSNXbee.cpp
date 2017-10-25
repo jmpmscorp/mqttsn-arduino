@@ -13,22 +13,6 @@ void MQTTSNXbee::disconnect(uint16_t duration){
     uint8_t xbeeResponse = _sendPacket(true, frameLength);
 }
 
-boolean MQTTSNXbee::publish(const char * topic, const char * data){
-    uint8_t frameLength = mqttsnParser->publishFrame(topic, data, nextMsgId);
-    return publishCommon(data, frameLength);
-}
-
-boolean MQTTSNXbee::publish(uint16_t topic, const char * data){
-    uint8_t frameLength = mqttsnParser->publishFrame(topic, data, nextMsgId);
-
-    return publishCommon(data, frameLength);
-}
-
-boolean MQTTSNXbee::publishCommon(const char * data, uint16_t frameLength){
-    uint8_t response = _sendPacket(true, frameLength);
-
-    return true;
-}
 
 boolean MQTTSNXbee::subscribe(const char * topic){
     uint8_t frameLength = mqttsnParser->subscribeOrUnsubscribeFrame(topic, nextMsgId, true);

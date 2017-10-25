@@ -13,8 +13,6 @@ class MQTTSNXbee : public MQTTSNCommon{
 
         //boolean connect(const char * clientId);
         void disconnect(uint16_t duration = 0);
-        boolean publish(const char * topic, const char * data);
-        boolean publish(uint16_t topic, const char * data);
         boolean subscribe(const char * topic);
         boolean subscribe(uint16_t topic);
         boolean unsubscribe(const char * topic);
@@ -30,9 +28,8 @@ class MQTTSNXbee : public MQTTSNCommon{
         XBeeResponse _response = XBeeResponse();
         ZBTxStatusResponse _txStatus = ZBTxStatusResponse();
         ZBRxResponse _rx = ZBRxResponse();
-        ModemStatusResponse _msr = ModemStatusResponse();
+        ModemStatusResponse _msr = ModemStatusResponse();        
         
-        boolean publishCommon(const char * data, uint16_t frameLength);
         boolean subscribeCommon(uint16_t frameLength);
         boolean unsubscribeCommon(uint16_t frameLength);
 

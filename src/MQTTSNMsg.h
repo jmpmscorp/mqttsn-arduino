@@ -183,16 +183,18 @@ class MQTTSNParser{
         uint8_t disconnectFrame(uint16_t duration = 0);
         uint8_t searchGWFrame();    
         uint8_t pingReqFrame(const char * clientId);    
-        uint8_t publishFrame(uint16_t topic, const char * data, uint16_t nextMsgId = 0);
-        uint8_t publishFrame(const char * topic, const char * data, uint16_t nextMsgId = 0);
+        uint8_t publishFrame(uint16_t topic, boolean predefined, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
+        uint8_t publishFrame(const char * topic, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
         uint8_t subscribeOrUnsubscribeFrame(const char * topic, uint16_t nextMsgId, boolean IsSubscription);
         uint8_t subscribeOrUnsubscribeFrame(uint16_t topic, uint16_t nextMsgId, boolean IsSubscription);
         
         byte buffer[MQTTSN_MAX_PACKET_SIZE];
+  
+        uint16_t _bswap(const uint16_t val);
     
     private:
         uint8_t publishFrameCommon(const char * data, uint16_t nextMsgId);
-        uint16_t _bswap(const uint16_t val);
+        
 };
 
 #endif

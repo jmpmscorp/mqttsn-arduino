@@ -21,14 +21,15 @@ class MQTTSNCommon{
         
         virtual boolean connect(const char * clientId, int keepAlive = 15);
         virtual void disconnect(uint16_t duration = 0) = 0;
-        virtual boolean publish(const char * topic, const char * data) = 0;
-        virtual boolean publish(uint16_t topic, const char * data) = 0;
+        virtual boolean pingReq(const char * clientId) = 0;
+        //virtual boolean publish(const char * topic, const char * data);
+        virtual boolean publish(uint16_t topic, boolean predefined, const char * data, uint8_t qos = 0);
         virtual boolean searchGateway();
         virtual boolean subscribe(const char * topic) = 0;
         virtual boolean subscribe(uint16_t topic);
         virtual boolean unsubscribe(const char * topic) = 0;
         virtual boolean unsubscribe(uint16_t topic) = 0;
-        virtual boolean pingReq(const char * clientId) = 0;
+        
 
         // Sets the optional "Diagnostics and Debug" stream.
         void setDebugStream(Stream &stream) { _debugStream = &stream; }
@@ -46,6 +47,7 @@ class MQTTSNCommon{
               
         
     private:
+        boolean _publishCommon(uint8_t frameLength);
         virtual void _saveGatewayAddress() {};
         virtual uint8_t _sendPacket(uint8_t length, boolean broadcast = false) {};
         virtual uint8_t _sendBroadcastPacket(uint8_t length) {};

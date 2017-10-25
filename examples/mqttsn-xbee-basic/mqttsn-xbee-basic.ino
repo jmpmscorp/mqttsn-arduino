@@ -22,6 +22,13 @@ void setup() {
   }else{
     Serial.println("Connect NOK");
   }
+
+  delay(2000);
+  if(mqttsnxbee.publish(2, "Hola")){
+    Serial.println("Publish OK");
+  } else{
+    Serial.println("Publish NOK");
+  }
   
 }
 
