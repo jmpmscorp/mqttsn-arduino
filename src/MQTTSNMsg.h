@@ -72,14 +72,14 @@ struct mqttsn_msg_searchgw : public mqttsn_msg_header {
 
 struct mqttsn_msg_gwinfo : public mqttsn_msg_header {
     uint8_t gwId;
-    char * gwAdd;
+    char gwAdd[0];
 };
 
 struct mqttsn_msg_connect : public mqttsn_msg_header {
     uint8_t flags;
     uint8_t protocolId;
     uint16_t keepAlive;
-    char * clientId;
+    char clientId[0];
 };
 
 struct mqttsn_msg_connack : public mqttsn_msg_header {
@@ -88,11 +88,11 @@ struct mqttsn_msg_connack : public mqttsn_msg_header {
 
 struct mqttsn_msg_willtopic : public mqttsn_msg_header {
     uint8_t flags;
-    char * willTopic;
+    char willTopic[0];
 };
 
 struct mqttsn_msg_willmsg : public mqttsn_msg_header {
-    char * willmsg;
+    char willmsg[0];
 };
 
 struct mqttsn_msg_register : public mqttsn_msg_header {
@@ -114,7 +114,7 @@ struct mqttsn_msg_publish : public mqttsn_msg_header {
         char topicName [2];
     };    
     uint16_t messageId;
-    char * data;
+    char data[0];
 };
 
 struct mqttsn_msg_puback : public mqttsn_msg_header {
@@ -131,7 +131,7 @@ struct mqttsn_msg_subOrUnsubscribe : public mqttsn_msg_header {
     uint8_t flags;
     uint16_t messageId;
     union {
-        char * topicName;
+        char topicName[0];
         uint16_t topicId;
     };
 };
@@ -143,7 +143,7 @@ struct mqttsn_msg_suback : public mqttsn_msg_header {
     uint8_t returnCode;
 };
 
-struct msg_unsubscribe : public mqttsn_msg_header {
+struct mqttsn_msg_unsubscribe : public mqttsn_msg_header {
     uint8_t flags;
     uint16_t message_id;
     union {
@@ -157,18 +157,18 @@ struct mqttsn_msg_unsuback : public mqttsn_msg_header {
 };
 
 struct mqttsn_msg_pingreq : public mqttsn_msg_header {
-    char * clientId;
+    char clientId[0];
 };
 
 struct mqttsn_msg_disconnect : public mqttsn_msg_header {
     uint16_t duration;
 };
 
-struct msg_willtopicresp : public mqttsn_msg_header {
+struct mqttsn_msg_willtopicresp : public mqttsn_msg_header {
     uint8_t returnCode;
 };
 
-struct msg_willmsgresp : public mqttsn_msg_header {
+struct mqttsn_msg_willmsgresp : public mqttsn_msg_header {
     uint8_t return_code;
 };
 #pragma endregion
@@ -182,9 +182,11 @@ class MQTTSNParser{
         uint8_t connectFrame(const char * clienId, int keepAlive = 10);
         uint8_t disconnectFrame(uint16_t duration = 0);
         uint8_t searchGWFrame();    
-        uint8_t pingReqFrame(const char * clientId);    
-        uint8_t publishFrame(uint16_t topic, boolean predefined, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
-        uint8_t publishFrame(const char * topic, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
+        uint8_t pingReqFrame(const char * clientId);
+        uint8_t pingRespFrame();
+        uint8_t pubAckFrame(uint8_t topicId, uint8_t msgId, uint8_t returnCode);
+        uint8_t publishFrame(uint16_t topic, boolean predefined, boolean retain, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
+        uint8_t publishFrame(const char * topic, boolean retain, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
         uint8_t subscribeOrUnsubscribeFrame(const char * topic, uint16_t nextMsgId, boolean IsSubscription);
         uint8_t subscribeOrUnsubscribeFrame(uint16_t topic, uint16_t nextMsgId, boolean IsSubscription);
         
@@ -193,7 +195,7 @@ class MQTTSNParser{
         uint16_t _bswap(const uint16_t val);
     
     private:
-        uint8_t publishFrameCommon(const char * data, uint16_t nextMsgId);
+        //uint8_t publishFrameCommon(const char * data, uint16_t nextMsgId);
         
 };
 

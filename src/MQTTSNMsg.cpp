@@ -43,32 +43,68 @@ uint8_t MQTTSNParser::disconnectFrame(uint16_t duration){
 
 uint8_t MQTTSNParser::pingReqFrame(const char * clientId){
     mqttsn_msg_pingreq * msg = (mqttsn_msg_pingreq *) buffer;
+    uint8_t clientIdLength = strlen(clientId);
     
-    msg->length = 2 + strlen(clientId);
+    msg->length = 2 + clientIdLength;
     msg->type = PINGREQ;
 
-    for(uint8_t i = 0; i < strlen(clientId); i++){
+    for(uint8_t i = 0; i < clientIdLength; i++){
         msg->clientId[i] = clientId[i];
     }
 
     return msg->length;
 }
 
-uint8_t MQTTSNParser::publishFrame(const char * topic, const char * data, uint16_t nextMsgId, uint8_t qos){
-    mqttsn_msg_publish * msg = (mqttsn_msg_publish *) buffer;
+uint8_t MQTTSNParser::pingRespFrame(){
+    mqttsn_msg_header * msg =  (mqttsn_msg_header *) buffer;
+    msg->length = 2;
+    msg->type = PINGRESP;
 
-    msg->flags = SHORT_TOPIC_NAME; //TopicId Flag
-    msg->topicName[0] = topic[0];   //Short name first character
-    msg->topicName[1] = topic[1];   //Short name second character
-
-    return publishFrameCommon(data, nextMsgId);
+    return msg->length;
 }
 
-uint8_t MQTTSNParser::publishFrame(uint16_t topic, boolean predefined, const char * data, uint16_t nextMsgId, uint8_t qos){
+uint8_t MQTTSNParser::pubAckFrame(uint8_t topicId, uint8_t msgId, uint8_t returnCode){
+    mqttsn_msg_puback * msg = (mqttsn_msg_puback * ) buffer;
+    msg->length = 7;
+    msg->type = PUBACK;
+    msg->topicId = topicId;
+    msg->messageId = msgId;
+    msg->returnCode = returnCode;
+
+    return msg->length;
+}
+
+
+uint8_t MQTTSNParser::publishFrame(const char * topic, boolean retain, const char * data, uint16_t nextMsgId, uint8_t qos){
+    mqttsn_msg_publish * msg = (mqttsn_msg_publish *) buffer;
+
+    if(strlen(topic) > 2) return 0;
+    
+    msg->type = PUBLISH; //MsgType
+    msg->flags = SHORT_TOPIC_NAME; //TopicId Flag
+    msg->flags |= retain << 4;
+    msg->flags |= qos << 5;
+    msg->topicName[0] = topic[0];   //Short name first character
+    msg->topicName[1] = topic[1];   //Short name second character
+    msg->messageId = _bswap(nextMsgId);
+
+    uint8_t dataLength = strlen(data) > (MQTTSN_MAX_PACKET_SIZE - 7) ? MQTTSN_MAX_PACKET_SIZE - 7 : strlen(data);
+    
+        for (uint8_t i = 0; i < dataLength; i++){
+            msg->data[i] = data[i];
+        }
+    
+        msg->length = 7 + dataLength;
+    
+        return msg->length;
+}
+
+uint8_t MQTTSNParser::publishFrame(uint16_t topic, boolean predefined, boolean retain, const char * data, uint16_t nextMsgId, uint8_t qos){
     mqttsn_msg_publish * msg = (mqttsn_msg_publish *) buffer;
     
     msg->type = PUBLISH; //MsgType
     msg->flags = predefined ? PREDEFINED_TOPIC_ID : NORMAL_TOPIC_ID; //TopicIdType Flag
+    msg->flags |= retain << 4;
     msg->flags |= qos << 5;
     msg->topicId = _bswap(topic);
     msg->messageId = _bswap(nextMsgId);
@@ -84,7 +120,7 @@ uint8_t MQTTSNParser::publishFrame(uint16_t topic, boolean predefined, const cha
     return msg->length;
 }
 
-uint8_t MQTTSNParser::publishFrameCommon(const char * data, uint16_t nextMsgId){
+/*uint8_t MQTTSNParser::publishFrameCommon(const char * data, uint16_t nextMsgId){
     mqttsn_msg_publish * msg = (mqttsn_msg_publish *) buffer;
 
     msg->type = PUBLISH; //MsgType
@@ -100,7 +136,7 @@ uint8_t MQTTSNParser::publishFrameCommon(const char * data, uint16_t nextMsgId){
     msg->length = 7 + dataLength;
 
     return msg->length;
-}
+}*/
 
 uint8_t MQTTSNParser::searchGWFrame(){
     mqttsn_msg_searchgw * msg = (mqttsn_msg_searchgw *) buffer;

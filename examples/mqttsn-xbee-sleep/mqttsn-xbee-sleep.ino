@@ -5,7 +5,7 @@
 
 MQTTSNXbee mqttsnxbee(xbeeSerial);
 
-void onTopicMsg(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength){
+void onPredefinedTopicMsg(unsigned int topicId, const char * data, unsigned int dataLength){
   Serial.println();
   Serial.print("TopicId: ");
   Serial.print(topicId);
@@ -13,18 +13,16 @@ void onTopicMsg(unsigned int topicId, unsigned int topicIdType, const char * dat
   for(int i = 0; i < dataLength; i++){
     Serial.write(data[i]);
   }
-  Serial.println();
 }
 
 void onShortTopicMsg(const char * topicId, const char * data, unsigned int dataLength){
+  Serial.println("SHORT TOPIC");
   Serial.println();
   Serial.print("TopicId: ");
   Serial.write(topicId);
   Serial.print("\t Data: ");
-  for(int i = 0; i < dataLength; i++){
-    Serial.write(data[i]);
-  }
-  Serial.println();
+  Serial.println(data);
+  //Serial.println();
 }
 
 
@@ -36,7 +34,7 @@ void setup() {
   mqttsnxbee.setDebugStream(debugSerial);
   Serial.println("Reset");
 
-  mqttsnxbee.setTopicMsgCallback(&onTopicMsg);
+  mqttsnxbee.setPredefinedTopicCallback(&onPredefinedTopicMsg);
   mqttsnxbee.setShortTopicCallback(&onShortTopicMsg);
   if(mqttsnxbee.searchGwAndConnect("Arduino1")){
     Serial.println("Connect OK");
@@ -45,26 +43,38 @@ void setup() {
   } 
 
   delay(1000);
-  unsigned int out;
-  if(mqttsnxbee.subscribe("val/1", &out)){
-    Serial.print(out);
-    Serial.println("Subscribe OK");
-  } else{
-    Serial.println("Subscribe NOK");
-  }
-
-  delay(1000);
 }
 
 void loop() {
-  mqttsnxbee.loopTask();  
- 
+  byte receivedMsg;
+  static unsigned long now;
+  
+  receivedMsg = mqttsnxbee.loopTask();
 
-  /*if(mqttsnxbee.publish(0,false, true, "Hola", 1)){
-    Serial.println("Publish OK");
+  //Serial.println(receivedMsg);
+  if(mqttsnxbee.getState() == MQTTSN_AWAKE){
+    if(receivedMsg == PINGRESP)
+      sleep();
+    /*else{
+      if(receivedMsg != 0xFF){
+        now = millis();
+      } else{
+        if(millis() > now + 10000) sleep();
+      }
+    }*/
   } else{
-    Serial.println("Publish NOK");
+    if(receivedMsg != 0xFF){
+      now = millis();
+    } else{
+      if(millis() > now + 5000) sleep();
+    }
   }
-
-  delay(5000);*/
 }
+
+void sleep(){
+  mqttsnxbee.sleep(10000);
+  delay(10000);
+  mqttsnxbee.awake();
+  Serial.println("Awake");
+}
+

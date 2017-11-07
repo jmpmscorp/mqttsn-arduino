@@ -6,54 +6,10 @@ MQTTSNXbee::MQTTSNXbee(Stream & xbeeStream){
     this->mqttsnParser = new MQTTSNParser();
 }
 
+void MQTTSNXbee::_incrementNextMsgId(){
+    nextMsgId++;
 
-
-void MQTTSNXbee::disconnect(uint16_t duration){
-    uint8_t frameLength = mqttsnParser->disconnectFrame(duration);
-    uint8_t xbeeResponse = _sendPacket(true, frameLength);
-}
-
-
-boolean MQTTSNXbee::subscribe(const char * topic){
-    uint8_t frameLength = mqttsnParser->subscribeOrUnsubscribeFrame(topic, nextMsgId, true);
-    return subscribeCommon(frameLength);
-}
-
-
-boolean MQTTSNXbee::subscribe(uint16_t topic){
-    uint8_t frameLength = mqttsnParser->subscribeOrUnsubscribeFrame(topic, nextMsgId, true);
-    return subscribeCommon(frameLength);
-}
-
-boolean MQTTSNXbee::subscribeCommon(uint16_t frameLength){
-    uint8_t response = _sendPacket(true, frameLength);
-
-    return true;
-}
-
-boolean MQTTSNXbee::unsubscribe(const char * topic){
-    uint8_t frameLength = mqttsnParser->subscribeOrUnsubscribeFrame(topic, nextMsgId, false);
-
-    return unsubscribeCommon(frameLength);
-}
-
-boolean MQTTSNXbee::unsubscribe(uint16_t topic){
-    uint8_t frameLength = mqttsnParser->subscribeOrUnsubscribeFrame(topic, nextMsgId, false);
-    
-    return unsubscribeCommon(frameLength);
-}
-
-boolean MQTTSNXbee::unsubscribeCommon(uint16_t frameLength){
-    uint8_t response = _sendPacket(true, frameLength);
-    
-    return true;
-}
-
-boolean MQTTSNXbee::pingReq(const char * clientId){
-    uint8_t frameLength = mqttsnParser->pingReqFrame(clientId);
-    uint8_t response = _sendPacket(true, frameLength);
-
-    return true;
+    if(nextMsgId == 0x7E) nextMsgId = 0; // Skip 7E values because is start byte for API MODE
 }
 
 uint8_t MQTTSNXbee::_sendPacket(uint8_t length, boolean broadcast){
@@ -69,6 +25,7 @@ uint8_t MQTTSNXbee::_sendPacket(uint8_t length, boolean broadcast){
         if(xbee.getResponse().getApiId() == ZB_TX_STATUS_RESPONSE){
             xbee.getResponse().getZBTxStatusResponse(_txStatus);
             //debugPrintLn(_txStatus.getDeliveryStatus());
+            _lastSent = millis();
             return _txStatus.getDeliveryStatus();
         }
         
@@ -91,9 +48,9 @@ uint8_t MQTTSNXbee::_sendBroadcastPacket(uint8_t length){
 
 boolean MQTTSNXbee::_waitResponsePacket(int timeout){
     uint8_t retry = 0;
-
+    
     boolean packetReceived;
-    do{
+    
         packetReceived = xbee.readPacket(timeout);
 
         if(packetReceived){
@@ -101,17 +58,20 @@ boolean MQTTSNXbee::_waitResponsePacket(int timeout){
                 xbee.getResponse().getZBRxResponse(_rx);
         
                 if(_rx.getOption() == ZB_PACKET_ACKNOWLEDGED){
-                    debugPrintLn("ACK");
+                    debugPrintLn(F("ACK"));
                 }
                 else{
-                    for(int i = 0; i < _rx.getDataLength(); i++){
-                        Serial.print(_rx.getData()[i],HEX);
-                        Serial.print('-');
-                    }
-                    Serial.println();
-                    responseBuffer = _rx.getData();
-                    return true;
+                    
                 }
+                for(int i = 0; i < _rx.getDataLength(); i++){
+                    Serial.print(_rx.getData()[i],HEX);
+                    Serial.print('-');
+                    responseBuffer[i] = _rx.getData()[i];
+                }
+                Serial.println();
+                
+                //responseBuffer = _rx.getData();
+                return true;
             } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE){
                 _handleModemStatusResponse();
             }
@@ -119,8 +79,50 @@ boolean MQTTSNXbee::_waitResponsePacket(int timeout){
             _handleResponseError();
             return false;
         }
-    } while(packetReceived); //Skip any others packets that aren't RESPONSE
+    //Skip any others packets that aren't RESPONSE
 }
+
+boolean MQTTSNXbee::_continuosWait(){
+    xbee.readPacket();
+    
+    if (xbee.getResponse().isAvailable()) {
+      // got something
+      
+      if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
+        // got a zb rx packet
+        
+        // now fill our zb rx class
+        xbee.getResponse().getZBRxResponse(_rx);
+            
+        if (_rx.getOption() == ZB_PACKET_ACKNOWLEDGED) {
+            // the sender got an ACK
+            
+        } else {
+            // we got it (obviously) but sender didn't get an ACK
+            
+        }
+        // set dataLed PWM to value of the first byte in the data
+        for(int i = 0; i < _rx.getDataLength();i++){
+            Serial.write(_rx.getData()[i]);
+            responseBuffer[i] = _rx.getData()[i];
+        } 
+
+        //responseBuffer = _rx.getData();
+        return true;
+      } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
+        xbee.getResponse().getModemStatusResponse(_msr);
+        // the local XBee sends this response on certain events, like association/dissociation
+                
+      } else {
+      	   
+      }
+    } else if (xbee.getResponse().isError()) {
+      //nss.print("Error reading packet.  Error code: ");  
+      //nss.println(xbee.getResponse().getErrorCode());
+    }
+    return false;
+}
+
 
 void MQTTSNXbee::_handleModemStatusResponse(){
     xbee.getResponse().getModemStatusResponse(_msr);
