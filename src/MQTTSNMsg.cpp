@@ -26,7 +26,7 @@ uint8_t MQTTSNParser::connectFrame(const char * clientId, int keepAlive){
 #pragma endregion Connect
 
 
-uint8_t MQTTSNParser::disconnectFrame(uint16_t duration){
+uint8_t MQTTSNParser::disconnectFrame(unsigned int duration){
     mqttsn_msg_disconnect * msg = (mqttsn_msg_disconnect *) buffer;
     
     msg->type = DISCONNECT;
@@ -75,7 +75,7 @@ uint8_t MQTTSNParser::pubAckFrame(uint8_t topicId, uint8_t msgId, uint8_t return
 }
 
 
-uint8_t MQTTSNParser::publishFrame(const char * topic, boolean retain, const char * data, uint16_t nextMsgId, uint8_t qos){
+uint8_t MQTTSNParser::publishFrame(const char * topic, boolean retain, const char * data, unsigned int nextMsgId, uint8_t qos){
     mqttsn_msg_publish * msg = (mqttsn_msg_publish *) buffer;
 
     if(strlen(topic) > 2) return 0;
@@ -99,7 +99,7 @@ uint8_t MQTTSNParser::publishFrame(const char * topic, boolean retain, const cha
         return msg->length;
 }
 
-uint8_t MQTTSNParser::publishFrame(uint16_t topic, boolean predefined, boolean retain, const char * data, uint16_t nextMsgId, uint8_t qos){
+uint8_t MQTTSNParser::publishFrame(unsigned int topic, boolean predefined, boolean retain, const char * data, unsigned int nextMsgId, uint8_t qos){
     mqttsn_msg_publish * msg = (mqttsn_msg_publish *) buffer;
     
     msg->type = PUBLISH; //MsgType
@@ -120,7 +120,7 @@ uint8_t MQTTSNParser::publishFrame(uint16_t topic, boolean predefined, boolean r
     return msg->length;
 }
 
-/*uint8_t MQTTSNParser::publishFrameCommon(const char * data, uint16_t nextMsgId){
+/*uint8_t MQTTSNParser::publishFrameCommon(const char * data, unsigned int nextMsgId){
     mqttsn_msg_publish * msg = (mqttsn_msg_publish *) buffer;
 
     msg->type = PUBLISH; //MsgType
@@ -148,7 +148,7 @@ uint8_t MQTTSNParser::searchGWFrame(){
     return msg->length;
 }
 
-uint8_t MQTTSNParser::subscribeOrUnsubscribeFrame(const char * topic, uint16_t nextMsgId, boolean IsSubscription){
+uint8_t MQTTSNParser::subscribeOrUnsubscribeFrame(const char * topic, unsigned int nextMsgId, boolean IsSubscription){
     mqttsn_msg_subOrUnsubscribe * msg = (mqttsn_msg_subOrUnsubscribe *) buffer;
 
     uint8_t topicLength = strlen(topic) > (MQTTSN_MAX_PACKET_SIZE - 5) ? MQTTSN_MAX_PACKET_SIZE - 5 : strlen(topic);
@@ -166,7 +166,7 @@ uint8_t MQTTSNParser::subscribeOrUnsubscribeFrame(const char * topic, uint16_t n
     return msg->length;
 }
 
-uint8_t MQTTSNParser::subscribeOrUnsubscribeFrame(uint16_t topic, uint16_t nextMsgId, boolean IsSubscription){
+uint8_t MQTTSNParser::subscribeOrUnsubscribeFrame(unsigned int topic, unsigned int nextMsgId, boolean IsSubscription){
     mqttsn_msg_subOrUnsubscribe * msg = (mqttsn_msg_subOrUnsubscribe *) buffer;
     
     msg->length = 7;
@@ -178,6 +178,6 @@ uint8_t MQTTSNParser::subscribeOrUnsubscribeFrame(uint16_t topic, uint16_t nextM
     return buffer[0];
 }
 
-uint16_t MQTTSNParser::_bswap(const uint16_t val){
+unsigned int MQTTSNParser::_bswap(const unsigned int val){
     return (val << 8) | (val >> 8);
 }

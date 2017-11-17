@@ -21,47 +21,65 @@
 #define T_SEARCHGW 5    //Waiting SearchGW response in seconds
 #define T_GWINFO 5      //Waiting GWinfo response in seconds
 #define T_RETRY 10      //Seconds between pingReq retries before sleep
-#define N_RETRY 3       //Retry number sleep->pingReq
+#define N_RETRY 3       //Number retries
+#define KEEP_ALIVE 15
 
 enum MQTTSN_STATES{
     MQTTSN_DISCONNECTED,
     MQTTSN_ACTIVE,
     MQTTSN_ASLEEP,
-    MQTTSN_AWAKE
+    MQTTSN_AWAKE,
+    MQTTSN_LOST
+};
+
+enum MQTTSN_ERROR_CODE{
+    MQTTSN_NO_ERROR = 0x00,
+    MQTTSN_MAX_RETRIES_REACH = 0x10,
+    MQTTSN_NO_COMMAND_ARRIVE = 0xFF
+};
+
+enum STABLISH_CONNECTION_STATE{
+    SEARCHING_GW,
+    TRYING_CONNECT
 };
 
 class MQTTSNCommon{
     public:
          
         boolean connect(const char * clientId, int keepAlive = 15);
-        void disconnect(uint16_t duration = 0);
+        void disconnect(unsigned int duration = 0);
         
         boolean publish(const char * topic, boolean retain, const char * data, uint8_t qos = 0);
-        boolean publish(uint16_t topic, boolean predefined, boolean retain, const char * data, uint8_t qos = 0);
+        boolean publish(unsigned int topic, boolean predefined, boolean retain, const char * data, uint8_t qos = 0);
         boolean searchGateway();
+        boolean searchGwAndConnect(const char * clientId, int keepAlive = 15);
+        uint8_t searchGwAndConnectAsync(const char * clientId, int keepAlive = 15);
         boolean pingReq();
         void pingResp();
         void pubAck(uint8_t topicId, uint8_t msgId, uint8_t returnCode = ACCEPTED);
-        boolean subscribe(const char * topic, uint16_t * topicIdOut);
-        boolean subscribe(uint16_t topic, uint16_t * topicIdOut);
-        //virtual boolean unsubscribe(const char * topic) = 0;
-        //virtual boolean unsubscribe(uint16_t topic) = 0;
+        boolean subscribe(const char * topic, unsigned int * topicIdOut);
+        boolean subscribe(unsigned int topic, unsigned int * topicIdOut);
+        boolean unsubscribe(const char * topic);
+        boolean unsubscribe(unsigned int topic);
+
+        uint8_t continuosAsyncTask();
+        void sleep(unsigned int duration);
+        boolean awake();
 
         uint8_t getState();
-        boolean searchGwAndConnect(const char * clientId, int keepAlive = 15);
-        void setTopicMsgCallback(void(*f)(uint16_t topicId, uint16_t topicIdType, const char * data, uint16_t dataLength));
-        void setShortTopicCallback(void(*f)(const char * topicName, const char * data, uint16_t dataLength));
-        void sleep(uint16_t duration);
-        boolean awake();
-        uint8_t loopTask();
+        void setState(uint8_t state);
+        
+        void setTopicMsgCallback(void(*f)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength));
+        void setShortTopicCallback(void(*f)(const char * topicName, const char * data, unsigned int dataLength));
+        void setOnDisconnectCallback(void(*f)(void));
+        
 
         // Sets the optional "Diagnostics and Debug" stream.
         void setDebugStream(Stream &stream) { _debugStream = &stream; }
         void setDebugStream(Stream *stream) { _debugStream = stream; }
                 
-        //MQTTSNParser * mqttsnParser = new MQTTSNParser();
     protected:
-        uint16_t nextMsgId = 1;
+        unsigned int nextMsgId = 1;
         uint8_t responseBuffer[MQTTSN_MAX_PACKET_SIZE];
         Stream * _debugStream;
         //Maybe this buffer could be erase but without it, Arduino is out of memory
@@ -73,8 +91,19 @@ class MQTTSNCommon{
               
         
     private:
+        char _clientId [MAX_LENGTH_CLIENT_ID + 1];
+        uint8_t _state = MQTTSN_DISCONNECTED;
+        uint8_t _retries = 0;
+        uint8_t _keepAlive = KEEP_ALIVE;
+
         boolean _publishCommon(uint8_t frameLength, uint8_t qos);
-        boolean _subscribeCommon(uint8_t frameLength, uint16_t * topicIdOut);
+        boolean _subscribeCommon(uint8_t frameLength, unsigned int * topicIdOut);
+        boolean _unsubscribeCommon(uint8_t frameLength);
+
+        boolean _handleConnack();
+        boolean _handlePuback(unsigned int lastMsgId);
+
+        void _setKeepAlive(unsigned int keepAlive);
         
         virtual void _incrementNextMsgId() = 0;
         virtual void _saveGatewayAddress() = 0;
@@ -84,10 +113,9 @@ class MQTTSNCommon{
         virtual boolean _continuosWait() = 0;
 
                 
-        void (*_onTopicMsgCallback)(uint16_t topicId, uint16_t topicIdType, const char * data, uint16_t dataLength);
-        void (*_onShortTopicCallback)(const char * topicName, const char * data, uint16_t dataLength);
-        char _clientId [MAX_LENGTH_CLIENT_ID + 1];
-        uint8_t _state = MQTTSN_DISCONNECTED;
+        void (*_onTopicMsgCallback)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength);
+        void (*_onShortTopicCallback)(const char * topicName, const char * data, unsigned int dataLength);
+        void (*_onDisconnectCallback)(void);
         
 };
 

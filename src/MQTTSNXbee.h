@@ -21,8 +21,8 @@ class MQTTSNXbee : public MQTTSNCommon{
         ZBRxResponse _rx = ZBRxResponse();
         ModemStatusResponse _msr = ModemStatusResponse();        
         
-        boolean subscribeCommon(uint16_t frameLength);
-        boolean unsubscribeCommon(uint16_t frameLength);
+        boolean subscribeCommon(unsigned int frameLength);
+        boolean unsubscribeCommon(unsigned int frameLength);
 
         void _incrementNextMsgId();
         void _saveGatewayAddress();
