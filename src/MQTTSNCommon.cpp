@@ -76,6 +76,10 @@ boolean MQTTSNCommon::publish(unsigned int topic, boolean predefined, boolean re
         debugPrintLn(F("==PUBLISH (NO ACTIVE)=="));
         return false;
     }
+
+    if(_state == MQTTSN_AWAKE){
+        connect(_clientId);
+    }
     
     uint8_t frameLength = mqttsnParser->publishFrame(topic, predefined, retain, data, nextMsgId, qos);
     //Serial.println("Hola");
@@ -89,6 +93,10 @@ boolean MQTTSNCommon::publish(const char * topic, boolean retain, const char * d
         return false;
     }
     
+    if(_state == MQTTSN_AWAKE){
+        connect(_clientId);
+    }
+
     uint8_t frameLength = mqttsnParser->publishFrame(topic,retain, data, nextMsgId, qos);
     return _publishCommon(frameLength, qos);
 }
