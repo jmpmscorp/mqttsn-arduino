@@ -23,6 +23,7 @@
 #define T_RETRY 10      //Seconds between pingReq retries before sleep
 #define N_RETRY 3       //Number retries
 #define KEEP_ALIVE 15
+#define T_PINGRESP 5    //PingReq waiting seconds when MQTTSN_AWAKE
 
 enum MQTTSN_STATES{
     MQTTSN_DISCONNECTED,
@@ -35,6 +36,7 @@ enum MQTTSN_STATES{
 enum MQTTSN_ERROR_CODE{
     MQTTSN_NO_ERROR = 0x00,
     MQTTSN_MAX_RETRIES_REACH = 0x10,
+    MQTTSN_PINGRESP_TIMEOUT = 0x20,
     MQTTSN_NO_COMMAND_ARRIVE = 0xFF
 };
 
@@ -62,18 +64,21 @@ class MQTTSNCommon{
         boolean unsubscribe(const char * topic);
         boolean unsubscribe(unsigned int topic);
 
+        boolean isWaitingPingResp();
         uint8_t continuosAsyncTask();
         void sleep(unsigned int duration);
         boolean awake();
 
         uint8_t getState();
+        unsigned long getLastReceived();
         void setState(uint8_t state);
         
-        void setTopicMsgCallback(void(*f)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength));
-        void setShortTopicCallback(void(*f)(const char * topicName, const char * data, unsigned int dataLength));
+        void setTopicMsgCallback(void(*f)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength, bool retain));
+        void setShortTopicCallback(void(*f)(const char * topicName, const char * data, unsigned int dataLength, bool retain));
         void setOnDisconnectCallback(void(*f)(void));
         
-
+        void setWdtChecker(void (*f)());
+        void setCustomDelay (void (*f)(unsigned long));
         // Sets the optional "Diagnostics and Debug" stream.
         void setDebugStream(Stream &stream) { _debugStream = &stream; }
         void setDebugStream(Stream *stream) { _debugStream = stream; }
@@ -87,6 +92,10 @@ class MQTTSNCommon{
         MQTTSNParser * mqttsnParser;
 
         unsigned long _lastSent = 0;
+        unsigned long _lastReceived = 0;
+
+        void (*_wdtChecker)();
+        void (*_delay)(unsigned long) = delay;
         void setClientId(const char * clientId);
               
         
@@ -96,15 +105,20 @@ class MQTTSNCommon{
         uint8_t _retries = 0;
         uint8_t _keepAlive = KEEP_ALIVE;
 
+        boolean _waitingPingResp = false;
+        
+        //When device is in Sleep Cicle, number of PingResp no received to considered LOST
+        uint8_t _pingRespRetries = 0;
+
         boolean _publishCommon(uint8_t frameLength, uint8_t qos);
         boolean _subscribeCommon(uint8_t frameLength, unsigned int * topicIdOut);
         boolean _unsubscribeCommon(uint8_t frameLength);
-
+        
         boolean _handleConnack();
         boolean _handlePuback(unsigned int lastMsgId);
 
         void _setKeepAlive(unsigned int keepAlive);
-        
+        boolean _checkBeforePublish();
         virtual void _incrementNextMsgId() = 0;
         virtual void _saveGatewayAddress() = 0;
         virtual uint8_t _sendPacket(uint8_t length, boolean broadcast = false) = 0;
@@ -113,8 +127,8 @@ class MQTTSNCommon{
         virtual boolean _continuosWait() = 0;
 
                 
-        void (*_onTopicMsgCallback)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength);
-        void (*_onShortTopicCallback)(const char * topicName, const char * data, unsigned int dataLength);
+        void (*_onTopicMsgCallback)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength, bool retain);
+        void (*_onShortTopicCallback)(const char * topicName, const char * data, unsigned int dataLength, bool retain);
         void (*_onDisconnectCallback)(void);
         
 };

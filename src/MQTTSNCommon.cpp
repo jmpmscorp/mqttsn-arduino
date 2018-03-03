@@ -1,23 +1,38 @@
 #include "MQTTSNCommon.h"
 
 boolean MQTTSNCommon::connect(const char * clientId, int keepAlive){
-    debugPrintLn(F("==CONNECT=="));
-    uint8_t frameLength = mqttsnParser->connectFrame(clientId, keepAlive);
-    uint8_t result = _sendPacket(frameLength);
-
-    if(!_waitResponsePacket()){ 
-        debugPrintLn(F("> NO RESPONSE"));
-        return false;
-    };
-
-    if(_handleConnack()){
-        setClientId(clientId);
-        _setKeepAlive(keepAlive);
-        
+    
+    if(_state == MQTTSN_ACTIVE){
         return true;
-    } else{
-        return false;
-    }
+    }  
+    
+    uint8_t frameLength = mqttsnParser->connectFrame(clientId, keepAlive);
+    
+    boolean success = false;
+    byte retries = 0;
+    do {
+        uint8_t result = _sendPacket(frameLength);
+        debugPrintLn(F("==CONNECT=="));
+        if(_waitResponsePacket()){ 
+
+            if(_handleConnack()){
+                setClientId(clientId);
+                _setKeepAlive(keepAlive);
+                
+                success = true;
+            } else {
+                retries ++;
+            }
+            
+        } else {
+            debugPrintLn(F("==CONNECT==\n> NO RESPONSE"));
+            retries ++;
+        }
+    }while( !success && retries < N_RETRY);
+    
+    if(!success) _state = MQTTSN_DISCONNECTED;
+    
+    return success;
 }
 
 void MQTTSNCommon::disconnect(unsigned int duration){
@@ -27,8 +42,9 @@ void MQTTSNCommon::disconnect(unsigned int duration){
         uint8_t result = _sendPacket(frameLength);
     }
     if(duration > 0){
-        if(_state == MQTTSN_ACTIVE || _state == MQTTSN_AWAKE)
+        if(_state == MQTTSN_ACTIVE || _state == MQTTSN_AWAKE){
             _state = MQTTSN_ASLEEP;
+        }           
     } else{
         _state = MQTTSN_DISCONNECTED;
     }
@@ -77,36 +93,41 @@ boolean MQTTSNCommon::publish(unsigned int topic, boolean predefined, boolean re
         return false;
     }
 
-    if(_state == MQTTSN_AWAKE){
-        connect(_clientId);
-    }
+    _checkBeforePublish();
     
     uint8_t frameLength = mqttsnParser->publishFrame(topic, predefined, retain, data, nextMsgId, qos);
-    //Serial.println("Hola");
     
     return _publishCommon(frameLength, qos);
 }
+
 
 boolean MQTTSNCommon::publish(const char * topic, boolean retain, const char * data, uint8_t qos){
     if(_state != MQTTSN_ACTIVE && _state != MQTTSN_AWAKE){
         debugPrintLn(F("==PUBLISH (NO ACTIVE)=="));
         return false;
     }
-    
-    if(_state == MQTTSN_AWAKE){
-        connect(_clientId);
-    }
 
+    _checkBeforePublish();
+    
     uint8_t frameLength = mqttsnParser->publishFrame(topic,retain, data, nextMsgId, qos);
     return _publishCommon(frameLength, qos);
 }
 
+boolean MQTTSNCommon::_checkBeforePublish(){
+    if(_state != MQTTSN_ACTIVE){
+        return connect(_clientId);
+    }
+    return false;
+}
+
 boolean MQTTSNCommon::_publishCommon(uint8_t frameLength, uint8_t qos){
-    debugPrintLn(F("==PUBLISH=="));
     uint8_t result = _sendPacket(frameLength);
+
+    debugPrintLn(F("==PUBLISH=="));
+
     unsigned int lastMsgId = nextMsgId;
     _incrementNextMsgId();
-    
+        
     if(qos == 0) return true;
 
     if(!_waitResponsePacket()){
@@ -142,25 +163,29 @@ boolean MQTTSNCommon::subscribe(unsigned int topic, unsigned int * topicIdOut){
 }
 
 boolean MQTTSNCommon::_subscribeCommon(uint8_t frameLength, unsigned int * topicIdOut){
-    debugPrintLn(F("==SUBSCRIBE=="));
+    
     uint8_t result = _sendPacket(frameLength);
     uint8_t lastMsgId = nextMsgId;
     _incrementNextMsgId();
     
-    if(!_waitResponsePacket()) return false;
+    debugPrintLn(F("==SUBSCRIBE=="));
+    if(!_waitResponsePacket()){
+        debugPrintLn(F("> NO RESPONSE"));
+        return false;
+    } 
     
     mqttsn_msg_suback * msg = (mqttsn_msg_suback *) responseBuffer;
 
     //if(msg->type != SUBACK)
-    if(responseBuffer[1] != SUBACK){
-        debugPrintLn(msg->type);
+    if(msg->type != SUBACK){
+        //debugPrintLn(msg->type);
         debugPrintLn(F("> NO SUBACK HEADER"));
         return false;
     } 
 
     //if(msg->returnCode != ACCEPTED)
-    if(responseBuffer[7] != ACCEPTED){
-        debugPrintLn(msg->returnCode);
+    if(msg->returnCode != ACCEPTED){
+        //debugPrintLn(msg->returnCode);
         debugPrintLn(F("> SUBSCRIBE REJECTED"));
         return false;
     } 
@@ -215,6 +240,11 @@ boolean MQTTSNCommon::_unsubscribeCommon(uint8_t frameLength){
 boolean MQTTSNCommon::awake(){
     if(_state == MQTTSN_ASLEEP){
         _state = MQTTSN_AWAKE;
+        _waitingPingResp = true;
+
+
+        //I don't know how many time since lastReceived so ¡Reset It!
+        _lastReceived = millis();
         return pingReq();
     }
     
@@ -229,6 +259,14 @@ void MQTTSNCommon::setState(uint8_t state){
     _state = state;
 }
 
+unsigned long MQTTSNCommon::getLastReceived(){
+    return _lastReceived;
+}
+
+boolean MQTTSNCommon::isWaitingPingResp(){
+    return _waitingPingResp;
+}
+
 boolean MQTTSNCommon::searchGateway(){
     _retries = 0;
 
@@ -240,11 +278,7 @@ boolean MQTTSNCommon::searchGateway(){
         
         if(_waitResponsePacket( T_RETRY * 1000)){
             mqttsn_msg_searchgw * msg = (mqttsn_msg_searchgw *) responseBuffer;
-            /*for(int i = 0; i < msg->length; i++){
-                debugPrint(responseBuffer[i], HEX);
-                debugPrint('-');
-            }*/
-            debugPrintLn(msg->type);
+            
             if( msg->type == GWINFO){
                 _saveGatewayAddress();
                 return true;
@@ -326,7 +360,7 @@ uint8_t MQTTSNCommon::continuosAsyncTask(){
             mqttsn_msg_publish * msg = (mqttsn_msg_publish *) responseBuffer;
             //uint8_t flags = msg->flags;
             uint8_t topicIdType = msg->flags & 0x03;
-                        
+            bool retain = (msg->flags & 0x10) >> 4;            
             uint8_t dataLength = msg->length - 7;
             
             for(int i = 0; i < dataLength; i++){
@@ -336,31 +370,31 @@ uint8_t MQTTSNCommon::continuosAsyncTask(){
             _onDataBuffer[dataLength] = '\0';
 
             if( (topicIdType == PREDEFINED_TOPIC_ID || topicIdType == NORMAL_TOPIC_ID) && _onTopicMsgCallback != NULL){
-                (*_onTopicMsgCallback)(mqttsnParser->_bswap(msg->topicId), topicIdType, _onDataBuffer, dataLength);
+                (*_onTopicMsgCallback)(mqttsnParser->_bswap(msg->topicId), topicIdType, _onDataBuffer, dataLength, retain);
                 pubAck(msg->topicId, msg->messageId);
             } else if(topicIdType == SHORT_TOPIC_NAME && _onShortTopicCallback != NULL){
-                (*_onShortTopicCallback)(msg->topicName, _onDataBuffer, dataLength);
+                (*_onShortTopicCallback)(msg->topicName, _onDataBuffer, dataLength, retain);
                 pubAck(0, msg->messageId);
             }
-
-            return PUBLISH;
         }
         else if( msgHeader->type == PINGREQ){
             _lastSent = millis();
             pingResp();
-
-            return PINGREQ;
         }
         else if ( msgHeader->type == DISCONNECT ){
             if(_onDisconnectCallback != NULL){
                 (*_onDisconnectCallback)();
             }
             _state = MQTTSN_DISCONNECTED;
-            return DISCONNECT;
         }
-        else if( msgHeader->type == PINGRESP && _state == MQTTSN_AWAKE){
-            return PINGRESP;
+        else if( msgHeader->type == PINGRESP){
+            if( _state == MQTTSN_AWAKE){
+                _pingRespRetries = 0;
+                _waitingPingResp = false;
+            }
         }
+
+        _lastReceived = millis();
     }
 
     unsigned long now = millis();
@@ -369,14 +403,28 @@ uint8_t MQTTSNCommon::continuosAsyncTask(){
         pingReq();
     }
 
-    return MQTTSN_NO_COMMAND_ARRIVE;
+    if(_waitingPingResp && now > _lastReceived + (T_PINGRESP * 1000)){
+        _pingRespRetries ++;
+
+        if(_pingRespRetries >= N_RETRY){
+            if(*_onDisconnectCallback != NULL){
+                (*_onDisconnectCallback)();
+            }
+            debugPrintLn(F("> GW LOST"));
+            _state = MQTTSN_LOST;
+        }
+
+        return MQTTSN_PINGRESP_TIMEOUT;
+    }
+
+    return MQTTSN_NO_ERROR;
 }
 
-void MQTTSNCommon::setTopicMsgCallback(void(*f)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength)){
+void MQTTSNCommon::setTopicMsgCallback(void(*f)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength, bool retain)){
     _onTopicMsgCallback = f;
 }
 
-void MQTTSNCommon::setShortTopicCallback(void(*f)(const char * topicName, const char * data, unsigned int dataLength)){
+void MQTTSNCommon::setShortTopicCallback(void(*f)(const char * topicName, const char * data, unsigned int dataLength, bool retain)){
     _onShortTopicCallback = f;
 }
 
@@ -389,18 +437,25 @@ void MQTTSNCommon::setClientId(const char * clientId){
     strncpy(_clientId, clientId, maxLength);
 }
 
+void MQTTSNCommon::setWdtChecker( void (*f)()) {
+    _wdtChecker = f;
+}
+
 
 boolean MQTTSNCommon::_handleConnack(){
     mqttsn_msg_connack * msg = (mqttsn_msg_connack *) responseBuffer;
 
     //Packet received should be: LENGTH(always 3) | CONNACK(0x05) | RETURN_CODE
-    if(msg->length != 3) return false;
+    if(msg->length != 3){
+        debugPrintLn(F("\tBAD MSG LENGTH"));
+        return false;
+    } 
     
     if(msg->type != CONNACK) {
         debugPrintLn(F("\tNO CONNACK HEADER"));
         return false;
     }
-
+    
     if(msg->returnCode != ACCEPTED){
         debugPrintLn(F("\tREJECTED CONNECT"));
         return false;
@@ -408,14 +463,18 @@ boolean MQTTSNCommon::_handleConnack(){
 
     nextMsgId = 1;
     _state = MQTTSN_ACTIVE;
-
+    _waitingPingResp = false;
+    _pingRespRetries = 0;
     return true;
 }
 
 boolean MQTTSNCommon::_handlePuback(unsigned int lastMsgId){
     mqttsn_msg_puback * msg = (mqttsn_msg_puback *) responseBuffer;
     
-    if(msg->type != PUBACK) return false;
+    if(msg->type != PUBACK){
+        debugPrintLn(F("\tNO PUBACK HEADER"));
+        return false;
+    } 
     
     if(msg->returnCode != ACCEPTED) {
         debugPrintLn(F("> PUBLISH REJECTED"));

@@ -28,11 +28,9 @@ uint8_t MQTTSNXbee::_sendPacket(uint8_t length, boolean broadcast){
             _lastSent = millis();
             return _txStatus.getDeliveryStatus();
         }
-        
     }
     else if (xbee.getResponse().isError()) {
         debugPrintLn(F("XBEE TRANSMISION ERROR"));
-        debugPrintLn(xbee.getResponse().getErrorCode());
         _handleResponseError();
         return 0xFF;
     } else{
@@ -49,41 +47,46 @@ uint8_t MQTTSNXbee::_sendBroadcastPacket(uint8_t length){
 }
 
 boolean MQTTSNXbee::_waitResponsePacket(int timeout){
-    uint8_t retry = 0;
-    
+    uint8_t retries = 0;
     boolean packetReceived;
-        
-    packetReceived = xbee.readPacket(timeout);
-
-    if(packetReceived){
-        if(xbee.getResponse().getApiId() == ZB_RX_RESPONSE){
-            xbee.getResponse().getZBRxResponse(_rx);
-    
-            if(_rx.getOption() == ZB_PACKET_ACKNOWLEDGED){
-                debugPrintLn(F("ACK"));
-            }
-            else{
-                
-            }
-            for(int i = 0; i < _rx.getDataLength(); i++){
-                responseBuffer[i] = _rx.getData()[i];
-            }
-            /*for(int i = 0; i < _rx.getDataLength(); i++){
-                debugPrint(responseBuffer[i], HEX);
-                debugPrint('-');
-            }*/
-            debugPrintLn();
-
-            return true;
-        } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE){
-            debugPrintLn("MODEN STATUS RESPONSE");
-            _handleModemStatusResponse();
+    do{
+        if(_wdtChecker != NULL) {
+            (*_wdtChecker)();
         }
-    }else if(xbee.getResponse().isError()){
-        debugPrintLn("XBEE RESPONSE ERROR");
-        _handleResponseError();
-        return false;
-    }
+        packetReceived = xbee.readPacket(timeout);
+        
+        if(packetReceived){
+            if(xbee.getResponse().getApiId() == ZB_RX_RESPONSE){
+                xbee.getResponse().getZBRxResponse(_rx);
+        
+                if(_rx.getOption() == ZB_PACKET_ACKNOWLEDGED){
+                    debugPrintLn(F("ACK"));
+                }
+                
+                for(int i = 0; i < _rx.getDataLength(); i++){
+                    responseBuffer[i] = _rx.getData()[i];
+                }
+                _lastReceived = millis();
+                return true;
+            } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE){
+                debugPrintLn("MODEN STATUS RESPONSE");
+                _handleModemStatusResponse();
+                return false;
+            } else {
+                debugPrintLn(F("UKNOWN PACKET"));
+                retries ++;
+            }
+            
+        }else if(xbee.getResponse().isError()){
+            debugPrintLn("XBEE RESPONSE ERROR");
+            _handleResponseError();
+            return false;
+        }else {
+            retries++;
+        }
+    }while(retries < 3);
+    
+    return false;
     //Skip any others packets that aren't RESPONSE
 }
 
@@ -108,8 +111,8 @@ boolean MQTTSNXbee::_continuosWait(){
         }
         // set dataLed PWM to value of the first byte in the data
         for(int i = 0; i < _rx.getDataLength();i++){
-            //debugPrint(_rx.getData()[i], HEX);
-            //debugPrint('-');
+            // debugPrint(_rx.getData()[i], HEX);
+            // debugPrint('-');
             responseBuffer[i] = _rx.getData()[i];
         }
         debugPrintLn();
@@ -118,10 +121,8 @@ boolean MQTTSNXbee::_continuosWait(){
         return true;
       } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
         xbee.getResponse().getModemStatusResponse(_msr);
-        // the local XBee sends this response on certain events, like association/dissociation
-                
+        // the local XBee sends this response on certain events, like association/dissociation      
       } else {
-      	   
       }
     } else if (xbee.getResponse().isError()) {
       //nss.print("Error reading packet.  Error code: ");  
@@ -144,5 +145,5 @@ void MQTTSNXbee::_handleModemStatusResponse(){
 }
 
 void MQTTSNXbee::_handleResponseError(){
-
+    debugPrintLn("Error");
 }
