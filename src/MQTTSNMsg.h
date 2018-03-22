@@ -57,17 +57,17 @@ SHORT_TOPIC_NAME
 
 #pragma region Messages Structures
 struct mqttsn_msg_header {
-    unsigned char length;
-    unsigned char type;
+    uint8_t length;
+    uint8_t type;
 };
 
 struct mqttsn_msg_advertise : public mqttsn_msg_header {
     uint8_t gwId;
-    unsigned int duration;
+    uint16_t duration;
 };
 
 struct mqttsn_msg_searchgw : public mqttsn_msg_header {
-    byte radius;
+    uint8_t radius;
 };
 
 struct mqttsn_msg_gwinfo : public mqttsn_msg_header {
@@ -78,7 +78,7 @@ struct mqttsn_msg_gwinfo : public mqttsn_msg_header {
 struct mqttsn_msg_connect : public mqttsn_msg_header {
     uint8_t flags;
     uint8_t protocolId;
-    unsigned int keepAlive;
+    uint16_t keepAlive;
     char clientId[0];
 };
 
