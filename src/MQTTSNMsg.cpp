@@ -63,7 +63,7 @@ uint8_t MQTTSNParser::pingRespFrame(){
     return msg->length;
 }
 
-uint8_t MQTTSNParser::pubAckFrame(uint8_t topicId, uint8_t msgId, uint8_t returnCode){
+uint8_t MQTTSNParser::pubAckFrame(uint8_t topicId, uint16_t msgId, uint8_t returnCode){
     mqttsn_msg_puback * msg = (mqttsn_msg_puback * ) buffer;
     msg->length = 7;
     msg->type = PUBACK;

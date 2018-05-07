@@ -111,13 +111,18 @@ boolean MQTTSNXbee::_continuosWait(){
         }
         // set dataLed PWM to value of the first byte in the data
         for(int i = 0; i < _rx.getDataLength();i++){
-            // debugPrint(_rx.getData()[i], HEX);
-            // debugPrint('-');
+             
             responseBuffer[i] = _rx.getData()[i];
         }
-        debugPrintLn();
+
+        /*for(int i = 0; i < _rx.getDataLength(); i++) {
+            debugPrint(responseBuffer[i], HEX);
+            debugPrint('-');
+        }
+        debugPrintLn();*/
 
         //responseBuffer = _rx.getData();
+        _lastReceived = millis();
         return true;
       } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
         xbee.getResponse().getModemStatusResponse(_msr);

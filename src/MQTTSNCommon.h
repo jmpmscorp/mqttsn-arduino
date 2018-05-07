@@ -58,7 +58,7 @@ class MQTTSNCommon{
         uint8_t searchGwAndConnectAsync(const char * clientId, int keepAlive = 15);
         boolean pingReq();
         void pingResp();
-        void pubAck(uint8_t topicId, uint8_t msgId, uint8_t returnCode = ACCEPTED);
+        void pubAck(uint8_t topicId, uint16_t msgId, uint8_t returnCode = ACCEPTED);
         boolean subscribe(const char * topic, unsigned int * topicIdOut);
         boolean subscribe(unsigned int topic, unsigned int * topicIdOut);
         boolean unsubscribe(const char * topic);

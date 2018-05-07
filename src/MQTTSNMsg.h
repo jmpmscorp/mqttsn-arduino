@@ -184,7 +184,7 @@ class MQTTSNParser{
         uint8_t searchGWFrame();    
         uint8_t pingReqFrame(const char * clientId);
         uint8_t pingRespFrame();
-        uint8_t pubAckFrame(uint8_t topicId, uint8_t msgId, uint8_t returnCode);
+        uint8_t pubAckFrame(uint8_t topicId, uint16_t msgId, uint8_t returnCode);
         uint8_t publishFrame(unsigned int topic, boolean predefined, boolean retain, const char * data, unsigned int nextMsgId, uint8_t qos = 0);
         uint8_t publishFrame(const char * topic, boolean retain, const char * data, unsigned int nextMsgId, uint8_t qos = 0);
         uint8_t subscribeOrUnsubscribeFrame(const char * topic, unsigned int nextMsgId, boolean IsSubscription);

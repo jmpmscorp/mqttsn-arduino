@@ -82,7 +82,7 @@ void MQTTSNCommon::pingResp(){
     uint8_t result = _sendPacket(frameLength);
 }
 
-void MQTTSNCommon::pubAck(uint8_t topicId, uint8_t msgId, uint8_t returnCode){
+void MQTTSNCommon::pubAck(uint8_t topicId, uint16_t msgId, uint8_t returnCode){
     uint8_t frameLength = mqttsnParser->pubAckFrame(topicId, msgId, returnCode);
     uint8_t result = _sendPacket(frameLength);
 }
@@ -362,13 +362,13 @@ uint8_t MQTTSNCommon::continuosAsyncTask(){
             uint8_t topicIdType = msg->flags & 0x03;
             bool retain = (msg->flags & 0x10) >> 4;            
             uint8_t dataLength = msg->length - 7;
-            
+            uint16_t msgId = mqttsnParser->_bswap(msg->messageId);
             for(int i = 0; i < dataLength; i++){
                _onDataBuffer[i] = (char )responseBuffer[7 + i];
             }
 
             _onDataBuffer[dataLength] = '\0';
-
+            debugPrintLn(msgId);
             if( (topicIdType == PREDEFINED_TOPIC_ID || topicIdType == NORMAL_TOPIC_ID) && _onTopicMsgCallback != NULL){
                 (*_onTopicMsgCallback)(mqttsnParser->_bswap(msg->topicId), topicIdType, _onDataBuffer, dataLength, retain);
                 pubAck(msg->topicId, msg->messageId);
