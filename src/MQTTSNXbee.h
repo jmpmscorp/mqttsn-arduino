@@ -20,16 +20,13 @@ class MQTTSNXbee : public MQTTSNCommon{
         ZBTxStatusResponse _txStatus = ZBTxStatusResponse();
         ZBRxResponse _rx = ZBRxResponse();
         ModemStatusResponse _msr = ModemStatusResponse();        
-        
-        boolean subscribeCommon(unsigned int frameLength);
-        boolean unsubscribeCommon(unsigned int frameLength);
-
+                
         void _incrementNextMsgId();
         void _saveGatewayAddress();
-        uint8_t _sendPacket(uint8_t length, boolean broadcast = false);
+        uint8_t _sendPacket(uint8_t length, bool broadcast = false);
         uint8_t _sendBroadcastPacket(uint8_t length);
-        boolean  _waitResponsePacket(int timeout = 2000);
-        boolean _continuosWait();
+        bool  _waitResponsePacket(uint16_t timeout = 2000);
+        bool _continuosWait();
         void _handleModemStatusResponse();
         void _handleResponseError();
 

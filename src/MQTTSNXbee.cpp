@@ -12,7 +12,7 @@ void MQTTSNXbee::_incrementNextMsgId(){
     if(nextMsgId == 0x7E) nextMsgId = 0; // Skip 7E values because is start byte for API MODE
 }
 
-uint8_t MQTTSNXbee::_sendPacket(uint8_t length, boolean broadcast){
+uint8_t MQTTSNXbee::_sendPacket(uint8_t length, bool broadcast){
     
     if(broadcast)
         _tx = ZBTxRequest(XBeeAddress64(0x00,BROADCAST_ADDRESS), mqttsnParser->buffer, length);
@@ -46,11 +46,12 @@ uint8_t MQTTSNXbee::_sendBroadcastPacket(uint8_t length){
     _sendPacket(length, true);
 }
 
-boolean MQTTSNXbee::_waitResponsePacket(int timeout){
+bool MQTTSNXbee::_waitResponsePacket(uint16_t timeout){
     uint8_t retries = 0;
-    boolean packetReceived;
+    bool packetReceived;
+
     do{
-        if(_wdtChecker != NULL) {
+        if(_wdtChecker != nullptr) {
             (*_wdtChecker)();
         }
         packetReceived = xbee.readPacket(timeout);
@@ -63,7 +64,7 @@ boolean MQTTSNXbee::_waitResponsePacket(int timeout){
                     debugPrintLn(F("ACK"));
                 }
                 
-                for(int i = 0; i < _rx.getDataLength(); i++){
+                for(size_t i = 0; i < _rx.getDataLength(); i++){
                     responseBuffer[i] = _rx.getData()[i];
                 }
                 _lastReceived = millis();
@@ -110,7 +111,7 @@ boolean MQTTSNXbee::_continuosWait(){
             
         }
         // set dataLed PWM to value of the first byte in the data
-        for(int i = 0; i < _rx.getDataLength();i++){
+        for(size_t i = 0; i < _rx.getDataLength();i++){
              
             responseBuffer[i] = _rx.getData()[i];
         }

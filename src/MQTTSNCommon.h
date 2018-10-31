@@ -48,33 +48,33 @@ enum STABLISH_CONNECTION_STATE{
 class MQTTSNCommon{
     public:
          
-        boolean connect(const char * clientId, int keepAlive = 15);
-        void disconnect(unsigned int duration = 0);
+        boolean connect(const char * clientId, uint16_t keepAlive = 15);
+        void disconnect(uint16_t duration = 0);
         
-        boolean publish(const char * topic, boolean retain, const char * data, uint8_t qos = 0);
-        boolean publish(unsigned int topic, boolean predefined, boolean retain, const char * data, uint8_t qos = 0);
-        boolean searchGateway();
-        boolean searchGwAndConnect(const char * clientId, int keepAlive = 15);
-        uint8_t searchGwAndConnectAsync(const char * clientId, int keepAlive = 15);
-        boolean pingReq();
+        bool publish(const char * topic, bool retain, const char * data, uint8_t qos = 0);
+        bool publish(uint16_t topic, bool predefined, bool retain, const char * data, uint8_t qos = 0);
+        bool searchGateway();
+        bool searchGwAndConnect(const char * clientId, uint16_t keepAlive = 15);
+        uint8_t searchGwAndConnectAsync(const char * clientId, uint16_t keepAlive = 15);
+        bool pingReq();
         void pingResp();
-        void pubAck(uint8_t topicId, uint16_t msgId, uint8_t returnCode = ACCEPTED);
-        boolean subscribe(const char * topic, unsigned int * topicIdOut);
-        boolean subscribe(unsigned int topic, unsigned int * topicIdOut);
-        boolean unsubscribe(const char * topic);
-        boolean unsubscribe(unsigned int topic);
+        void pubAck(uint16_t topicId, uint16_t msgId, uint8_t returnCode = ACCEPTED);
+        bool subscribe(const char * topic, uint16_t * topicIdOut);
+        bool subscribe(unsigned int topic, uint16_t * topicIdOut);
+        bool unsubscribe(const char * topic);
+        bool unsubscribe(uint16_t topic);
 
-        boolean isWaitingPingResp();
+        bool isWaitingPingResp();
         uint8_t continuosAsyncTask();
-        void sleep(unsigned int duration);
-        boolean awake();
+        void sleep(uint16_t duration);
+        bool awake();
 
         uint8_t getState();
         unsigned long getLastReceived();
         void setState(uint8_t state);
         
-        void setTopicMsgCallback(void(*f)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength, bool retain));
-        void setShortTopicCallback(void(*f)(const char * topicName, const char * data, unsigned int dataLength, bool retain));
+        void setTopicMsgCallback(void(*f)(uint16_t topicId, uint8_t topicIdType, const char * data, uint16_t dataLength, bool retained));
+        void setShortTopicCallback(void(*f)(const char * topicName, const char * data, uint16_t dataLength, bool retained));
         void setOnDisconnectCallback(void(*f)(void));
         
         void setWdtChecker(void (*f)());
@@ -84,7 +84,7 @@ class MQTTSNCommon{
         void setDebugStream(Stream *stream) { _debugStream = stream; }
                 
     protected:
-        unsigned int nextMsgId = 1;
+        uint16_t nextMsgId = 1;
         uint8_t responseBuffer[MQTTSN_MAX_PACKET_SIZE];
         Stream * _debugStream;
         //Maybe this buffer could be erase but without it, Arduino is out of memory
@@ -105,30 +105,31 @@ class MQTTSNCommon{
         uint8_t _retries = 0;
         uint8_t _keepAlive = KEEP_ALIVE;
 
-        boolean _waitingPingResp = false;
+        bool _waitingPingResp = false;
         
         //When device is in Sleep Cicle, number of PingResp no received to considered LOST
         uint8_t _pingRespRetries = 0;
 
-        boolean _publishCommon(uint8_t frameLength, uint8_t qos);
-        boolean _subscribeCommon(uint8_t frameLength, unsigned int * topicIdOut);
-        boolean _unsubscribeCommon(uint8_t frameLength);
+        bool _publishCommon(uint8_t frameLength, uint8_t qos);
+        bool _subscribeCommon(uint8_t frameLength, uint16_t * topicIdOut);
+        bool _unsubscribeCommon(uint8_t frameLength);
         
         boolean _handleConnack();
-        boolean _handlePuback(unsigned int lastMsgId);
+        boolean _handlePuback(uint16_t lastMsgId);
 
-        void _setKeepAlive(unsigned int keepAlive);
+        void _setKeepAlive(uint16_t keepAlive);
         boolean _checkBeforePublish();
+        void _setLost();
         virtual void _incrementNextMsgId() = 0;
         virtual void _saveGatewayAddress() = 0;
-        virtual uint8_t _sendPacket(uint8_t length, boolean broadcast = false) = 0;
+        virtual uint8_t _sendPacket(uint8_t length, bool broadcast = false) = 0;
         virtual uint8_t _sendBroadcastPacket(uint8_t length) = 0;
-        virtual boolean _waitResponsePacket(int timeout = 2000) = 0;
-        virtual boolean _continuosWait() = 0;
+        virtual bool _waitResponsePacket(uint16_t timeout = 2000) = 0;
+        virtual bool _continuosWait() = 0;
 
                 
-        void (*_onTopicMsgCallback)(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength, bool retain);
-        void (*_onShortTopicCallback)(const char * topicName, const char * data, unsigned int dataLength, bool retain);
+        void (*_onTopicMsgCallback)(uint16_t topicId, uint8_t topicIdType, const char * data, uint16_t dataLength, bool retain);
+        void (*_onShortTopicCallback)(const char * topicName, const char * data, uint16_t dataLength, bool retain);
         void (*_onDisconnectCallback)(void);
         
 };

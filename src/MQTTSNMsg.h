@@ -96,64 +96,64 @@ struct mqttsn_msg_willmsg : public mqttsn_msg_header {
 };
 
 struct mqttsn_msg_register : public mqttsn_msg_header {
-    unsigned int topicId;
-    unsigned int messageId;
+    uint16_t topicId;
+    uint16_t messageId;
     char * topicName;
 };
 
 struct mqttsn_msg_regack : public mqttsn_msg_header {
-    unsigned int topicId;
-    unsigned int messageId;
+    uint16_t topicId;
+    uint16_t messageId;
     uint8_t returnCode;
 };
 
 struct mqttsn_msg_publish : public mqttsn_msg_header {
     uint8_t flags;
     union{
-        unsigned int topicId;
+        uint16_t topicId;
         char topicName [2];
     };    
-    unsigned int messageId;
+    uint16_t messageId;
     char data[0];
 };
 
 struct mqttsn_msg_puback : public mqttsn_msg_header {
-    unsigned int topicId;
-    unsigned int messageId;
+    uint16_t topicId;
+    uint16_t messageId;
     uint8_t returnCode;
 };
 
 struct mqttsn_msg_pubqos2 : public mqttsn_msg_header {
-    unsigned int messageId;
+    uint16_t messageId;
 };
 
 struct mqttsn_msg_subOrUnsubscribe : public mqttsn_msg_header {
     uint8_t flags;
-    unsigned int messageId;
+    uint16_t messageId;
     union {
         char topicName[0];
-        unsigned int topicId;
+        uint16_t topicId;
     };
 };
 
 struct mqttsn_msg_suback : public mqttsn_msg_header {
     uint8_t flags;
-    unsigned int topicId;
-    unsigned int messageId;
+    uint16_t topicId;
+    uint16_t messageId;
     uint8_t returnCode;
 };
 
 struct mqttsn_msg_unsubscribe : public mqttsn_msg_header {
     uint8_t flags;
-    unsigned int message_id;
+    uint16_t message_id;
     union {
         char topic_name[0];
-        unsigned int topic_id;
+        uint16_t topic_id;
     };
 };
 
 struct mqttsn_msg_unsuback : public mqttsn_msg_header {
-    unsigned int messageId;
+    uint16_t messageId;
 };
 
 struct mqttsn_msg_pingreq : public mqttsn_msg_header {
@@ -161,7 +161,7 @@ struct mqttsn_msg_pingreq : public mqttsn_msg_header {
 };
 
 struct mqttsn_msg_disconnect : public mqttsn_msg_header {
-    unsigned int duration;
+    uint16_t duration;
 };
 
 struct mqttsn_msg_willtopicresp : public mqttsn_msg_header {
@@ -179,24 +179,21 @@ class MQTTSNParser{
 
         MQTTSNParser();
 
-        uint8_t connectFrame(const char * clienId, int keepAlive = 10);
-        uint8_t disconnectFrame(unsigned int duration = 0);
+        uint8_t connectFrame(const char * clienId, uint16_t keepAlive = 10);
+        uint8_t disconnectFrame(uint16_t duration = 0);
         uint8_t searchGWFrame();    
         uint8_t pingReqFrame(const char * clientId);
         uint8_t pingRespFrame();
-        uint8_t pubAckFrame(uint8_t topicId, uint16_t msgId, uint8_t returnCode);
-        uint8_t publishFrame(unsigned int topic, boolean predefined, boolean retain, const char * data, unsigned int nextMsgId, uint8_t qos = 0);
-        uint8_t publishFrame(const char * topic, boolean retain, const char * data, unsigned int nextMsgId, uint8_t qos = 0);
-        uint8_t subscribeOrUnsubscribeFrame(const char * topic, unsigned int nextMsgId, boolean IsSubscription);
-        uint8_t subscribeOrUnsubscribeFrame(unsigned int topic, unsigned int nextMsgId, boolean IsSubscription);
+        uint8_t pubAckFrame(uint16_t topicId, uint16_t msgId, uint8_t returnCode);
+        uint8_t publishFrame(uint16_t topic, bool predefined, bool retain, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
+        uint8_t publishFrame(const char * topic, bool retain, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
+        uint8_t subscribeOrUnsubscribeFrame(const char * topic, uint16_t nextMsgId, bool IsSubscription);
+        uint8_t subscribeOrUnsubscribeFrame(uint16_t topic, uint16_t nextMsgId, bool IsSubscription);
         
-        byte buffer[MQTTSN_MAX_PACKET_SIZE];
+        uint8_t buffer[MQTTSN_MAX_PACKET_SIZE];
   
-        unsigned int _bswap(const unsigned int val);
+        uint16_t _bswap(const uint16_t val);    
     
-    private:
-        //uint8_t publishFrameCommon(const char * data, unsigned int nextMsgId);
-        
 };
 
 #endif

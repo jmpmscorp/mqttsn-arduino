@@ -3,15 +3,19 @@
 #define xbeeSerial Serial1
 #define debugSerial SerialUSB
 
-
-#if defined (ARDUINO_SODAQ_AUTONOMO)
+#if defined(ARDUINO_AVR_SODAQ_MBILI)
+  #define debugSerial Serial
+  #define xbeeSerial Serial1
   #define xbeeSleepRQ BEEDTR
-  #define SD_CS_PIN CS_SD
+#elif defined (ARDUINO_SODAQ_AUTONOMO)
+  #define debugSerial SerialUSB
+  #define xbeeSerial Serial1
+  #define xbeeSleepRQ BEEDTR
 #endif
 
 MQTTSNXbee mqttsnxbee(xbeeSerial);
 
-void onTopicMsg(unsigned int topicId, unsigned int topicIdType, const char * data, unsigned int dataLength){
+void onTopicMsg(unsigned int topicId, uint8_t topicIdType, const char * data, unsigned int dataLength, bool retained){
   debugSerial.println();
   debugSerial.print("TopicId: ");
   debugSerial.print(topicId);
@@ -22,7 +26,7 @@ void onTopicMsg(unsigned int topicId, unsigned int topicIdType, const char * dat
   debugSerial.println();
 }
 
-void onShortTopicMsg(const char * topicId, const char * data, unsigned int dataLength){
+void onShortTopicMsg(const char * topicId, const char * data, unsigned int dataLength, bool retained){
   debugSerial.println();
   debugSerial.print("TopicId: ");
   debugSerial.write(topicId);
@@ -45,17 +49,15 @@ void setup() {
 #endif
   
   // put your setup code here, to run once:
-  xbeeSerial.begin(4800);
+  xbeeSerial.begin(9600);
   debugSerial.begin(19200);
   mqttsnxbee.setDebugStream(debugSerial);
-  debugSerial.println("Reset");
-
-  
+  debugSerial.println("Reset");  
 
 
   mqttsnxbee.setTopicMsgCallback(&onTopicMsg);
   mqttsnxbee.setShortTopicCallback(&onShortTopicMsg);
-  if(mqttsnxbee.searchGwAndConnect("Arduino2")){
+  if(mqttsnxbee.searchGwAndConnect("Arduino1")){
     debugSerial.println("Connect OK");
   }else{
     debugSerial.println("Connect NOK");
@@ -70,18 +72,37 @@ void setup() {
   } else{
     debugSerial.println("Subscribe NOK");
   }*/
+  
+  unsigned int id;
+  if(mqttsnxbee.subscribe("testMqttsn/1", &id)){
+    debugSerial.println("Subscribe OK");
+  } 
+  else{
+    debugSerial.println("Subscribe NOK");
+  }
 }
 
 void loop() {
   static unsigned long lastTime = millis();
   mqttsnxbee.continuosAsyncTask();  
- 
+  //mqttsnxbee.connect("Arduino1");
 
-  /*if(mqttsnxbee.publish(0,false, true, "Hola", 1)){
-    Serial.println("Publish OK");
-  } else{
-    Serial.println("Publish NOK");
+  /*if(millis() - lastTime > 5000){
+    if(mqttsnxbee.publish(1,true, true, "Hola", 1)){
+      Serial.println("Publish OK");
+    } else{
+      Serial.println("Publish NOK");
+    }
+
+    if(mqttsnxbee.publish("hiiiiiiii", true, "Hola", 1)){
+      Serial.println("Publish OK");
+    } else{
+      Serial.println("Publish NOK");
+    }
+
+    lastTime = millis();
   }*/
+  
 
   
   /*int topic = 0;
@@ -90,7 +111,7 @@ void loop() {
   } else{
     Serial.println("Unsubscribe NOK");
   }*/
-  if(millis() > lastTime + 5000){
+  /*if(millis() > lastTime + 5000){
     unsigned int out;
     if(mqttsnxbee.subscribe(11, &out)){
       debugSerial.print(out);
@@ -99,6 +120,6 @@ void loop() {
       debugSerial.println("Subscribe NOK");
     }
     lastTime = millis();
-  }
+  }*/
 
 }
