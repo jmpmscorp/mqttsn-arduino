@@ -15,7 +15,7 @@
 
 MQTTSNXbee mqttsnxbee(xbeeSerial);
 
-void onTopicMsg(unsigned int topicId, uint8_t topicIdType, const char * data, unsigned int dataLength, bool retained){
+void onTopicMsg(uint16_t topicId, uint8_t topicIdType, const char * data, uint16_t dataLength, bool retained){
   debugSerial.println();
   debugSerial.print("TopicId: ");
   debugSerial.print(topicId);
@@ -26,7 +26,7 @@ void onTopicMsg(unsigned int topicId, uint8_t topicIdType, const char * data, un
   debugSerial.println();
 }
 
-void onShortTopicMsg(const char * topicId, const char * data, unsigned int dataLength, bool retained){
+void onShortTopicMsg(const char * topicId, const char * data, uint16_t dataLength, bool retained){
   debugSerial.println();
   debugSerial.print("TopicId: ");
   debugSerial.write(topicId);
@@ -73,17 +73,19 @@ void setup() {
     debugSerial.println("Subscribe NOK");
   }*/
   
-  unsigned int id;
+  /*uint16_t id;
   if(mqttsnxbee.subscribe("testMqttsn/1", &id)){
     debugSerial.println("Subscribe OK");
   } 
   else{
     debugSerial.println("Subscribe NOK");
-  }
+  }*/
 }
 
 void loop() {
   static unsigned long lastTime = millis();
+  /*debugSerial.println("Hola");
+  delay(2500);*/
   mqttsnxbee.continuosAsyncTask();  
   //mqttsnxbee.connect("Arduino1");
 

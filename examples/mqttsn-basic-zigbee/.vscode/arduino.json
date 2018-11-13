@@ -1,0 +1,5 @@
+{
+    "board": "SODAQ:samd:sodaq_autonomo",
+    "sketch": "mqttsn-basic-zigbee.ino",
+    "port": "COM10"
+}

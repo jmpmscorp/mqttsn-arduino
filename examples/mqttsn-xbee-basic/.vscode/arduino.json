@@ -1,5 +1,5 @@
 {
-    "board": "SODAQ:avr:sodaq_mbili",
-    "port": "COM7",
+    "board": "SODAQ:samd:sodaq_autonomo",
+    "port": "COM10",
     "sketch": "mqttsn-xbee-basic.ino"
 }

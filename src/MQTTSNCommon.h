@@ -60,7 +60,7 @@ class MQTTSNCommon{
         void pingResp();
         void pubAck(uint16_t topicId, uint16_t msgId, uint8_t returnCode = ACCEPTED);
         bool subscribe(const char * topic, uint16_t * topicIdOut);
-        bool subscribe(unsigned int topic, uint16_t * topicIdOut);
+        bool subscribe(uint16_t topic, uint16_t * topicIdOut);
         bool unsubscribe(const char * topic);
         bool unsubscribe(uint16_t topic);
 

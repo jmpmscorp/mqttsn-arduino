@@ -67,6 +67,13 @@ bool MQTTSNXbee::_waitResponsePacket(uint16_t timeout){
                 for(size_t i = 0; i < _rx.getDataLength(); i++){
                     responseBuffer[i] = _rx.getData()[i];
                 }
+
+                /*for(int i = 0; i < _rx.getDataLength(); i++) {
+                    debugPrint(responseBuffer[i], HEX);
+                    debugPrint('-');
+                }
+                debugPrintLn();*/
+
                 _lastReceived = millis();
                 return true;
             } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE){
@@ -116,11 +123,11 @@ boolean MQTTSNXbee::_continuosWait(){
             responseBuffer[i] = _rx.getData()[i];
         }
 
-        /*for(int i = 0; i < _rx.getDataLength(); i++) {
+        for(int i = 0; i < _rx.getDataLength(); i++) {
             debugPrint(responseBuffer[i], HEX);
             debugPrint('-');
         }
-        debugPrintLn();*/
+        debugPrintLn();
 
         //responseBuffer = _rx.getData();
         _lastReceived = millis();
