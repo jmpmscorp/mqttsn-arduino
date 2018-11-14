@@ -20,16 +20,21 @@
 #define RECEIVE_PACKET_FRAME_TYPE       0x90
 
 #define FRAME_DATA_OFFSET 4
+#define RECEIVE_PACKET_FRAME_MQTTSN_DATA_OFFSET 11
 
-#define RECEIVE_PACKET_FRAME_MQTTSN_DATA_OFFSET 15
+#ifndef MAX_ZIGBEE_BUFFER_SIZE
+    #define MAX_ZIGBEE_BUFFER_SIZE 100
+#endif
 
 class ZigbeeMqttsnClient : public MqttsnClient {
     public:
         ZigbeeMqttsnClient(Stream &stream);
         void setSerial(Stream &stream);
+        uint8_t * getMqttsnMsgPtr();
         bool packetAvailable();
         int readPacket();
-        int sendPacket(bool broadcast = false);
+        int sendPacket(uint8_t * buffer1, size_t bufferLength, uint8_t * buffer2, size_t buffer2Length, bool broadcast = false);
+        int sendPacket(uint8_t * buffer, size_t bufferLength, bool broadcast = false);
         void saveGatewayAddress();
     
     private:
@@ -40,6 +45,7 @@ class ZigbeeMqttsnClient : public MqttsnClient {
         uint8_t _bytePos = 0;
         bool _byteEscape = false;
         
+        uint8_t _receiveBuffer[MAX_ZIGBEE_BUFFER_SIZE];
         uint16_t _frameLength;
         uint8_t _apiFrameType;
         uint8_t _checksum;
@@ -48,7 +54,6 @@ class ZigbeeMqttsnClient : public MqttsnClient {
         uint32_t _gatewayAddressMsb;
         uint32_t _gatewayAddressLsb;
 
-        uint8_t auxBuffer[11];
         bool _receivePacketAvailable = false;
         bool _packetAvailable = false;
         bool _error = false;

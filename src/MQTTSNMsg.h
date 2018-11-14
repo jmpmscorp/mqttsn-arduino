@@ -1,11 +1,7 @@
-#ifndef MQTTSNMSG_H_
-#define MQTTSNMSG_H_
+#pragma once
 
-#include <Arduino.h>
-
-#ifndef MQTTSN_MAX_PACKET_SIZE
-    #define MQTTSN_MAX_PACKET_SIZE 128
-#endif
+#ifndef __MQTTSN_MSG_H__
+#define __MQTTSN_MSG_H__
 
 #define MAX_LENGTH_CLIENT_ID 23
 
@@ -42,159 +38,117 @@
 
 #define PROTOCOL_ID 0x01
 
-enum ReturnCode{
-ACCEPTED,
-CONGESTION,
-INVALID_TOPIC_ID,
-NOT_SUPPORTED
+enum class TOPIC_ID_TYPE : uint8_t {
+    NORMAL_TOPIC,
+    PREDEFINED_TOPIC,
+    SHORT_TOPIC_NAME
 };
 
-enum TopicIdType{
-NORMAL_TOPIC_ID,
-PREDEFINED_TOPIC_ID,
-SHORT_TOPIC_NAME
+enum MQTTSN_QoS : uint8_t {
+    QoS0,
+    QoS1,
+    QoS2,
+    QoS3  // -1
 };
 
-#pragma region Messages Structures
-struct mqttsn_msg_header {
-    uint8_t length;
-    uint8_t type;
+enum class ReturnCode : uint8_t {
+    ACCEPTED,
+    CONGESTION,
+    INVALID_TOPIC_ID,
+    NOT_SUPPORTED
 };
 
-struct mqttsn_msg_advertise : public mqttsn_msg_header {
-    uint8_t gwId;
-    uint16_t duration;
-};
-
-struct mqttsn_msg_searchgw : public mqttsn_msg_header {
-    uint8_t radius;
-};
-
-struct mqttsn_msg_gwinfo : public mqttsn_msg_header {
-    uint8_t gwId;
-    char gwAdd[0];
-};
-
-struct mqttsn_msg_connect : public mqttsn_msg_header {
-    uint8_t flags;
-    uint8_t protocolId;
-    uint16_t keepAlive;
-    char clientId[0];
-};
-
-struct mqttsn_msg_connack : public mqttsn_msg_header {
-    uint8_t returnCode;
-};
-
-struct mqttsn_msg_willtopic : public mqttsn_msg_header {
-    uint8_t flags;
-    char willTopic[0];
-};
-
-struct mqttsn_msg_willmsg : public mqttsn_msg_header {
-    char willmsg[0];
-};
-
-struct mqttsn_msg_register : public mqttsn_msg_header {
-    uint16_t topicId;
-    uint16_t messageId;
-    char * topicName;
-};
-
-struct mqttsn_msg_regack : public mqttsn_msg_header {
-    uint16_t topicId;
-    uint16_t messageId;
-    uint8_t returnCode;
-};
-
-struct mqttsn_msg_publish : public mqttsn_msg_header {
-    uint8_t flags;
-    union{
-        uint16_t topicId;
-        char topicName [2];
-    };    
-    uint16_t messageId;
-    char data[0];
-};
-
-struct mqttsn_msg_puback : public mqttsn_msg_header {
-    uint16_t topicId;
-    uint16_t messageId;
-    uint8_t returnCode;
-};
-
-struct mqttsn_msg_pubqos2 : public mqttsn_msg_header {
-    uint16_t messageId;
-};
-
-struct mqttsn_msg_subOrUnsubscribe : public mqttsn_msg_header {
-    uint8_t flags;
-    uint16_t messageId;
-    union {
-        char topicName[0];
-        uint16_t topicId;
-    };
-};
-
-struct mqttsn_msg_suback : public mqttsn_msg_header {
-    uint8_t flags;
-    uint16_t topicId;
-    uint16_t messageId;
-    uint8_t returnCode;
-};
-
-struct mqttsn_msg_unsubscribe : public mqttsn_msg_header {
-    uint8_t flags;
-    uint16_t message_id;
-    union {
-        char topic_name[0];
-        uint16_t topic_id;
-    };
-};
-
-struct mqttsn_msg_unsuback : public mqttsn_msg_header {
-    uint16_t messageId;
-};
-
-struct mqttsn_msg_pingreq : public mqttsn_msg_header {
-    char clientId[0];
-};
-
-struct mqttsn_msg_disconnect : public mqttsn_msg_header {
-    uint16_t duration;
-};
-
-struct mqttsn_msg_willtopicresp : public mqttsn_msg_header {
-    uint8_t returnCode;
-};
-
-struct mqttsn_msg_willmsgresp : public mqttsn_msg_header {
-    uint8_t return_code;
-};
-#pragma endregion
-
-class MQTTSNParser{
+class MqttsnMsg {
     public:
+        MqttsnMsg() {}       
         
+        uint8_t getLength() const { return _parseBuffer[0]; }        
+        uint8_t getMsgType() const { return _parseBuffer[1]; }
 
-        MQTTSNParser();
-
-        uint8_t connectFrame(const char * clienId, uint16_t keepAlive = 10);
-        uint8_t disconnectFrame(uint16_t duration = 0);
-        uint8_t searchGWFrame();    
-        uint8_t pingReqFrame(const char * clientId);
-        uint8_t pingRespFrame();
-        uint8_t pubAckFrame(uint16_t topicId, uint16_t msgId, uint8_t returnCode);
-        uint8_t publishFrame(uint16_t topic, bool predefined, bool retain, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
-        uint8_t publishFrame(const char * topic, bool retain, const char * data, uint16_t nextMsgId, uint8_t qos = 0);
-        uint8_t subscribeOrUnsubscribeFrame(const char * topic, uint16_t nextMsgId, bool IsSubscription);
-        uint8_t subscribeOrUnsubscribeFrame(uint16_t topic, uint16_t nextMsgId, bool IsSubscription);
+        virtual void build(uint8_t length, uint8_t msgType) {
+            setLength(length);
+            setMsgType(msgType);
+        }
         
-        uint8_t buffer[MQTTSN_MAX_PACKET_SIZE];
-  
-        uint16_t _bswap(const uint16_t val);    
+        void setParseBuffer(uint8_t * buffer) { _parseBuffer = buffer; }
     
+    protected:
+        uint8_t * _parseBuffer;
+    
+    private:
+        void setLength(uint8_t length) { _parseBuffer[0] = length; }
+        void setMsgType(uint8_t msgType) { _parseBuffer[1] = msgType; }
 };
 
-#endif
+class SearchGwMqttsnMsg : public MqttsnMsg {
+    public:
+        SearchGwMqttsnMsg() : MqttsnMsg() {}
+        uint8_t getRadius() const { return _parseBuffer[2]; }
 
+        void build(uint8_t radius) {
+            MqttsnMsg::build(0x03, SEARCHGW);
+            setRadius(radius);
+        }
+    
+    private:
+        void setRadius(uint8_t radius) { _parseBuffer[2] = radius; }
+
+};
+
+class GwInfoMqttsnMsg : public MqttsnMsg {
+    public:
+        GwInfoMqttsnMsg() : MqttsnMsg() {}
+        
+        uint8_t getGwId() const { return _parseBuffer[2]; }
+        uint8_t * getGwAddr() const { return & _parseBuffer[3]; }
+
+        void build(uint8_t length, uint8_t gwId) {
+            MqttsnMsg::build(length, GWINFO);
+            setGwId(gwId);
+        }
+    
+    private:
+        void setGwId(uint8_t gwId) { _parseBuffer[2] = gwId; }
+        void setGwAddr(uint8_t * gwAddr, int length) { memcpy(&_parseBuffer[3], gwAddr, length); }
+
+};
+
+class ConnectMqttsnMsg : public MqttsnMsg {
+    public:
+        ConnectMqttsnMsg() : MqttsnMsg() {}
+        uint8_t getFlags() const { return _parseBuffer[2]; }
+        uint8_t getProtocolId() const { return _parseBuffer[3]; }        
+        uint16_t getDuration() const { return _parseBuffer[4] * 256 + _parseBuffer[5]; }
+        const char * getClient() { return reinterpret_cast<const char *>(&_parseBuffer[6]); }
+
+        void build(uint8_t length, uint8_t flags, uint16_t duration) {
+            MqttsnMsg::build(length, CONNECT);
+            setFlags(flags);
+            setProtocolId();
+            setDuration(duration);
+        }
+    
+    private:
+        void setFlags(uint8_t flags) { _parseBuffer[2] = flags; }
+        void setProtocolId(uint8_t protocolId = PROTOCOL_ID) { _parseBuffer[3] = protocolId; }
+        void setDuration(uint16_t duration) {
+            _parseBuffer[4] = duration / 256;
+            _parseBuffer[5] = duration % 256;
+        }
+        void setClientId(const char * clientId) { memcpy(&_parseBuffer[6], clientId, strlen(clientId)); }
+
+};
+
+class ConnackMqttsnMsg : public MqttsnMsg {
+    public:
+        ConnackMqttsnMsg() : MqttsnMsg() {}
+        ReturnCode getReturnCode() const { return static_cast<ReturnCode>(_parseBuffer[2]); }
+        void build(ReturnCode returnCode) { 
+            MqttsnMsg::build(0x03, CONNACK);
+            setReturnCode(returnCode);
+        }
+    private:
+        void setReturnCode(ReturnCode returnCode) { _parseBuffer[2] = static_cast<uint8_t>(returnCode); }
+};
+
+#endif // __MQTTSN_MSG_H__

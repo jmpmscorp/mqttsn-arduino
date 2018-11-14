@@ -10,6 +10,14 @@ void ZigbeeMqttsnClient::setSerial(Stream &stream){
     _serial = &stream;
 }
 
+uint8_t * ZigbeeMqttsnClient::getMqttsnMsgPtr() {
+    if(_apiFrameType == RECEIVE_PACKET_FRAME_TYPE) {
+        return & _receiveBuffer[RECEIVE_PACKET_FRAME_MQTTSN_DATA_OFFSET];
+    } else {
+        return nullptr;
+    }
+}
+
 bool ZigbeeMqttsnClient::packetAvailable() {
     return _receivePacketAvailable;
 }
@@ -21,14 +29,13 @@ int ZigbeeMqttsnClient::readPacket() {
         _packetAvailable = false;
         _byteEscape = 0;
         _bytePos = 0;
-        _frameLength = 0;
         _checksum = 0;
         _apiFrameType = 0;
     }
 
     while(_serial->available()) {
         c = _serial->read();
-        DEBUG(c);
+        DEBUGHEX(c);
         DEBUG('-');
         if (_bytePos > 0 && c == START_BYTE) {
             _error = true;
@@ -77,9 +84,7 @@ int ZigbeeMqttsnClient::readPacket() {
                 break;
 
             case 3:
-                _apiFrameType = c;
-                DEBUG("Frame Type: ");
-                DEBUGLN(_apiFrameType);
+                _apiFrameType = c;                
                 _bytePos++;
 
                 break;
@@ -107,12 +112,13 @@ int ZigbeeMqttsnClient::readPacket() {
                     return 0;
                 }
                 else {
-                    if(_apiFrameType == RECEIVE_PACKET_FRAME_TYPE && _bytePos >= RECEIVE_PACKET_FRAME_MQTTSN_DATA_OFFSET) {
+                    /*if(_apiFrameType == RECEIVE_PACKET_FRAME_TYPE && _bytePos >= RECEIVE_PACKET_FRAME_MQTTSN_DATA_OFFSET) {
                         _mqttsnFrameBuffer[_bytePos - RECEIVE_PACKET_FRAME_MQTTSN_DATA_OFFSET] = c;
                     }
                     else{
                         auxBuffer[_bytePos - FRAME_DATA_OFFSET] = c;
-                    }
+                    }*/
+                    _receiveBuffer[_bytePos - FRAME_DATA_OFFSET] = c;
 
                     _bytePos++;
                 }
@@ -123,10 +129,12 @@ int ZigbeeMqttsnClient::readPacket() {
     }
 }
 
+int ZigbeeMqttsnClient::sendPacket(uint8_t * buffer, size_t bufferLength, bool broadcast) {
+    return sendPacket(buffer, bufferLength, nullptr, 0, broadcast);    
+}
 
-int ZigbeeMqttsnClient::sendPacket(bool broadcast) {
-    //DEBUGLN("Send Packet");
-    _frameLength = _mqttsnFrameBuffer[0] + 14;
+int ZigbeeMqttsnClient::sendPacket(uint8_t * buffer1, size_t buffer1Length, uint8_t * buffer2, size_t buffer2Length, bool broadcast) {
+    _frameLength = buffer1Length + buffer2Length + 14;
     
     _sendByte(START_BYTE, false);    
     _sendByte( (uint8_t)((_frameLength >> 8) & 0xFF), true);     // MSB
@@ -155,16 +163,25 @@ int ZigbeeMqttsnClient::sendPacket(bool broadcast) {
     _sendByte(0x00, true);            // Transmit Options
     _checksum += 0x00;
     
-    for(size_t i = 0; i < _mqttsnFrameBuffer[0]; i++) {
-        _sendByte(_mqttsnFrameBuffer[i], true);
-        _checksum += _mqttsnFrameBuffer[i];
+    if(buffer1) {
+        for(size_t i = 0; i < buffer1Length; i++) {
+            _sendByte(buffer1[i], true);
+            _checksum += buffer1[i];
+        }
     }
+
+    if(buffer2) {
+        for(size_t i = 0; i < buffer2Length; i++) {
+            _sendByte(buffer2[i], true);
+            _checksum += buffer2[i];
+        }
+    }    
 
     _checksum = 0xFF - _checksum;
     _sendByte(_checksum, true);
 
     _serial->flush();
-
+    DEBUGLN();
     unsigned long now = millis();
 
     do {
@@ -177,14 +194,21 @@ int ZigbeeMqttsnClient::sendPacket(bool broadcast) {
 
     if(_packetAvailable && _apiFrameType == TRANSMIT_STATUS_FRAME_TYPE) {
         DEBUG(F("Delivery Status: "));
-        DEBUGHEX(auxBuffer[4]);
+        DEBUGHEX(_receiveBuffer[4]);
         DEBUGLN();
-        return auxBuffer[4];        // Delivery Status;
+        return _receiveBuffer[4];        // Delivery Status;
     }
 }
         
 void ZigbeeMqttsnClient::saveGatewayAddress() {
-
+    //_gatewayAddressMsb = _receiveBuffer[0] << 24 + _receiveBuffer[1] << 16 + _receiveBuffer[2] << 8 + _receiveBuffer[3];
+    //_gatewayAddressMsb = _receiveBuffer[4] << 24 + _receiveBuffer[5] << 16 + _receiveBuffer[6] << 8 + _receiveBuffer[7];
+    _gatewayAddressMsb = 0x0013A200;
+    _gatewayAddressLsb = 0x409A7DBC;
+    
+    DEBUGHEX(_gatewayAddressMsb);
+    DEBUGHEX(_gatewayAddressLsb);
+    DEBUGLN();
 }
 
 void ZigbeeMqttsnClient::_sendAddress(uint32_t msb, uint32_t lsb) {
@@ -206,10 +230,13 @@ void ZigbeeMqttsnClient::_sendAddress(uint32_t msb, uint32_t lsb) {
 void ZigbeeMqttsnClient::_sendByte(uint8_t b, bool escape) {
     if( escape && ( b == START_BYTE || b == ESCAPE || b == XON || b == XOFF )) {
         _serial->write(ESCAPE);
+        DEBUGHEX(ESCAPE);
         _serial->write(b ^ 0x20);
+        DEBUGHEX(b ^ 0x20);
     }
     else {
         _serial->write(b);
+        DEBUGHEX(b);
     }
 
     DEBUG('-')

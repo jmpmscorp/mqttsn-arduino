@@ -1,4 +1,4 @@
-#include "MQTTSNMsg.h"
+#include "MQTTSN_Msg.h"
 
 MQTTSNParser::MQTTSNParser(){
 

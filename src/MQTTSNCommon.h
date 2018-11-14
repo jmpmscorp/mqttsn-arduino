@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <Stream.h>
-#include "MQTTSNMsg.h"
+#include "MQTTSN_Msg.h"
 
 #define DEBUG
 

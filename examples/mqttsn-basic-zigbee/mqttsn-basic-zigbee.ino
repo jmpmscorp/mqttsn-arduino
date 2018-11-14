@@ -1,5 +1,5 @@
 #define ZIGBEE_MQTTSN_CLIENT
-#include "MQTTSN.h"
+#include "Mqttsn.h"
 
 #if defined(ARDUINO_AVR_SODAQ_MBILI)
   #define debugSerial Serial
@@ -12,7 +12,7 @@
 #endif
 
 ZigbeeMqttsnClient client(zigbeeSerial);
-MQTTSN mqttsn(client);
+Mqttsn mqttsn(client);
 
 void setup() {
     #if defined (ARDUINO_SODAQ_AUTONOMO)
@@ -20,8 +20,10 @@ void setup() {
         digitalWrite(BEE_VCC, HIGH);
         pinMode(BEEDTR, OUTPUT);
         digitalWrite(BEEDTR, LOW);
-        delay(5000);
-        while(!SerialUSB);
+        unsigned long now = millis();
+        while (!SerialUSB && millis() - now < 5000) {
+          delay(100);
+        }
     #endif
 
     
@@ -32,9 +34,20 @@ void setup() {
     debugSerial.println("Start");
 
     delay(1000);
-    mqttsn.searchGateway();
+    
+    if(mqttsn.searchGateway()) {
+      debugSerial.println(F("Search GW OK"));
+      delay(1000);
+      if(mqttsn.connect("Autonomo")) {
+        debugSerial.println(F("Connect OK"));
+      } else {
+        debugSerial.println(F("Connect NOK"));
+      }
+    } else {
+      debugSerial.println(F("Search GW NOK"));
+    }
 }
 
 void loop() {
-  //client.readPacket();
+  client.readPacket();
 }
