@@ -26,6 +26,16 @@
     #define MAX_ZIGBEE_BUFFER_SIZE 100
 #endif
 
+enum class DeliveryStatus : uint8_t {
+    SUCCESS,
+    MAC_ACK_FAILURE,
+    COLLISION_AVOIDANCE_FAILURE,
+    NETWORK_ACK_FAILURE = 0x21,
+    ROUTE_NOT_FOUND = 0x25,
+    INTERNAL_RESOURCE_ERROR = 0x31,
+    INTERNAL_ERROR = 0x32
+};
+
 class ZigbeeMqttsnClient : public MqttsnClient {
     public:
         ZigbeeMqttsnClient(Stream &stream);
@@ -35,7 +45,10 @@ class ZigbeeMqttsnClient : public MqttsnClient {
         int readPacket();
         int sendPacket(uint8_t * buffer1, size_t bufferLength, uint8_t * buffer2, size_t buffer2Length, bool broadcast = false);
         int sendPacket(uint8_t * buffer, size_t bufferLength, bool broadcast = false);
+        bool hasGatewayAddress();
         void saveGatewayAddress();
+        void clearGatewayAddress();
+
     
     private:
         void _sendAddress(uint32_t msb, uint32_t lsb);

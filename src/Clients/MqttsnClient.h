@@ -9,6 +9,11 @@
 #define CUSTOM_STREAM_DEBUG
 #include "../MqttsnDebug.h"
 
+#ifndef MAX_LENGTH_CLIENT_ID
+    #define MAX_LENGTH_CLIENT_ID 23
+#endif
+
+
 class MqttsnClient {
     public: 
         virtual bool packetAvailable() = 0;
@@ -17,18 +22,17 @@ class MqttsnClient {
         virtual int readPacket() = 0;
         virtual int sendPacket(uint8_t * buffer1, size_t bufferLength, uint8_t * buffer2, size_t buffer2Length, bool broadcast = false) = 0;
         virtual int sendPacket(uint8_t * buffer, size_t bufferLength, bool broadcast = false) = 0;
+        virtual bool hasGatewayAddress() = 0;
         virtual void saveGatewayAddress() = 0;
-
-        virtual void setSerial(Stream &stream) {};
-        
+        virtual void clearGatewayAddress() = 0;
+      
+        virtual void setSerial(Stream &stream) {};        
         void setDebugStream(Stream &stream) { _debugStream = &stream; }
     
     protected:
         Stream * _debugStream = nullptr;
 
     private:
-        
-
 };
 
 #endif //__MQTTSN_CLIENT__

@@ -62,28 +62,30 @@ class MqttsnMsg {
     public:
         MqttsnMsg() {}       
         
-        uint8_t getLength() const { return _parseBuffer[0]; }        
-        uint8_t getMsgType() const { return _parseBuffer[1]; }
+        uint8_t getLength() const { return _inputBuffer[0]; }        
+        uint8_t getMsgType() const { return _inputBuffer[1]; }
 
+        uint8_t * getOutputBuffer() { return _outputBuffer; }
+        void setInputBuffer(uint8_t * buffer) { _inputBuffer = buffer; }
+        
         virtual void build(uint8_t length, uint8_t msgType) {
             setLength(length);
             setMsgType(msgType);
-        }
-        
-        void setParseBuffer(uint8_t * buffer) { _parseBuffer = buffer; }
+        }       
     
     protected:
-        uint8_t * _parseBuffer;
+        uint8_t _outputBuffer[8];
+        uint8_t * _inputBuffer;
     
     private:
-        void setLength(uint8_t length) { _parseBuffer[0] = length; }
-        void setMsgType(uint8_t msgType) { _parseBuffer[1] = msgType; }
+        void setLength(uint8_t length) { _outputBuffer[0] = length; }
+        void setMsgType(uint8_t msgType) { _outputBuffer[1] = msgType; }
 };
 
 class SearchGwMqttsnMsg : public MqttsnMsg {
     public:
         SearchGwMqttsnMsg() : MqttsnMsg() {}
-        uint8_t getRadius() const { return _parseBuffer[2]; }
+        uint8_t getRadius() const { return _inputBuffer[2]; }
 
         void build(uint8_t radius) {
             MqttsnMsg::build(0x03, SEARCHGW);
@@ -91,7 +93,7 @@ class SearchGwMqttsnMsg : public MqttsnMsg {
         }
     
     private:
-        void setRadius(uint8_t radius) { _parseBuffer[2] = radius; }
+        void setRadius(uint8_t radius) { _outputBuffer[2] = radius; }
 
 };
 
@@ -99,8 +101,8 @@ class GwInfoMqttsnMsg : public MqttsnMsg {
     public:
         GwInfoMqttsnMsg() : MqttsnMsg() {}
         
-        uint8_t getGwId() const { return _parseBuffer[2]; }
-        uint8_t * getGwAddr() const { return & _parseBuffer[3]; }
+        uint8_t getGwId() const { return _inputBuffer[2]; }
+        uint8_t * getGwAddr() const { return & _inputBuffer[3]; }
 
         void build(uint8_t length, uint8_t gwId) {
             MqttsnMsg::build(length, GWINFO);
@@ -108,18 +110,18 @@ class GwInfoMqttsnMsg : public MqttsnMsg {
         }
     
     private:
-        void setGwId(uint8_t gwId) { _parseBuffer[2] = gwId; }
-        void setGwAddr(uint8_t * gwAddr, int length) { memcpy(&_parseBuffer[3], gwAddr, length); }
+        void setGwId(uint8_t gwId) { _outputBuffer[2] = gwId; }
+        // void setGwAddr(uint8_t * gwAddr, int length) { memcpy(&_outputBuffer[3], gwAddr, length); }
 
 };
 
 class ConnectMqttsnMsg : public MqttsnMsg {
     public:
         ConnectMqttsnMsg() : MqttsnMsg() {}
-        uint8_t getFlags() const { return _parseBuffer[2]; }
-        uint8_t getProtocolId() const { return _parseBuffer[3]; }        
-        uint16_t getDuration() const { return _parseBuffer[4] * 256 + _parseBuffer[5]; }
-        const char * getClient() { return reinterpret_cast<const char *>(&_parseBuffer[6]); }
+        uint8_t getFlags() const { return _inputBuffer[2]; }
+        uint8_t getProtocolId() const { return _inputBuffer[3]; }        
+        uint16_t getDuration() const { return _inputBuffer[4] * 256 + _inputBuffer[5]; }
+        const char * getClient() { return reinterpret_cast<const char *>(&_inputBuffer[6]); }
 
         void build(uint8_t length, uint8_t flags, uint16_t duration) {
             MqttsnMsg::build(length, CONNECT);
@@ -129,26 +131,33 @@ class ConnectMqttsnMsg : public MqttsnMsg {
         }
     
     private:
-        void setFlags(uint8_t flags) { _parseBuffer[2] = flags; }
-        void setProtocolId(uint8_t protocolId = PROTOCOL_ID) { _parseBuffer[3] = protocolId; }
+        void setFlags(uint8_t flags) { _outputBuffer[2] = flags; }
+        void setProtocolId(uint8_t protocolId = PROTOCOL_ID) { _outputBuffer[3] = protocolId; }
         void setDuration(uint16_t duration) {
-            _parseBuffer[4] = duration / 256;
-            _parseBuffer[5] = duration % 256;
+            _outputBuffer[4] = duration / 256;
+            _outputBuffer[5] = duration % 256;
         }
-        void setClientId(const char * clientId) { memcpy(&_parseBuffer[6], clientId, strlen(clientId)); }
+
+        // void setClientId(const char * clientId) { memcpy(&_outputBuffer[6], clientId, strlen(clientId)); }
 
 };
 
 class ConnackMqttsnMsg : public MqttsnMsg {
     public:
         ConnackMqttsnMsg() : MqttsnMsg() {}
-        ReturnCode getReturnCode() const { return static_cast<ReturnCode>(_parseBuffer[2]); }
+        ReturnCode getReturnCode() const { return static_cast<ReturnCode>(_inputBuffer[2]); }
         void build(ReturnCode returnCode) { 
             MqttsnMsg::build(0x03, CONNACK);
             setReturnCode(returnCode);
         }
     private:
-        void setReturnCode(ReturnCode returnCode) { _parseBuffer[2] = static_cast<uint8_t>(returnCode); }
+        void setReturnCode(ReturnCode returnCode) { _outputBuffer[2] = static_cast<uint8_t>(returnCode); }
 };
+
+/*class DisconnectMqttsnMsg : public MqttsnMsg {
+    public:
+        DisconnectMqttsnMsg : 
+
+};*/
 
 #endif // __MQTTSN_MSG_H__

@@ -1,4 +1,5 @@
 #define ZIGBEE_MQTTSN_CLIENT
+#define MQTTSN_AUTORECONNECT
 #include "Mqttsn.h"
 
 #if defined(ARDUINO_AVR_SODAQ_MBILI)
@@ -34,20 +35,18 @@ void setup() {
     debugSerial.println("Start");
 
     delay(1000);
-    
-    if(mqttsn.searchGateway()) {
-      debugSerial.println(F("Search GW OK"));
-      delay(1000);
-      if(mqttsn.connect("Autonomo")) {
-        debugSerial.println(F("Connect OK"));
-      } else {
-        debugSerial.println(F("Connect NOK"));
-      }
+
+    mqttsn.setAutoreconnect(true);
+    int result = mqttsn.connect("Autonomo");
+    debugSerial.println(result);
+    if(result == 0) {
+      debugSerial.println(F("Connect OK"));
     } else {
-      debugSerial.println(F("Search GW NOK"));
+      debugSerial.println(F("Connect NOK"));
     }
+    
 }
 
 void loop() {
-  client.readPacket();
+  mqttsn.loop();
 }
